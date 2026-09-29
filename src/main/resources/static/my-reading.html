@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Reading & Progress - Municipal Library</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .reading-hero {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            color: white;
+            padding: 24px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+        }
+        .reading-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+        .reading-card {
+            background: white;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .reading-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+        }
+        .reading-card-cover {
+            height: 160px;
+            background: #f1f5f9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            overflow: hidden;
+        }
+        .reading-card-cover img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .reading-card-body {
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+        .progress-bar-bg {
+            background: #e2e8f0;
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 12px 0 6px 0;
+        }
+        .progress-bar-fill {
+            background: #2563eb;
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+        .progress-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748b;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <h1>Municipal Library System</h1>
+            <nav style="display: flex; gap: 12px; align-items: center;">
+                <a href="/index.html" style="color: white; text-decoration: none; font-weight: 500; padding: 6px 10px; border-radius: 4px; background: rgba(255,255,255,0.1);">Dashboard</a>
+                <a href="/search.html" style="color: white; text-decoration: none; font-weight: 500; padding: 6px 10px; border-radius: 4px; background: rgba(255,255,255,0.1);">Search 🔍</a>
+                <a href="/my-reading.html" style="color: white; text-decoration: none; font-weight: 600; padding: 6px 10px; border-radius: 4px; background: rgba(255,255,255,0.25);">My Reading 📚</a>
+                <a href="/libraries.html" style="color: white; text-decoration: none; font-weight: 500; padding: 6px 10px; border-radius: 4px; background: rgba(255,255,255,0.1);">Libraries</a>
+                <a href="/licenses.html" style="color: white; text-decoration: none; font-weight: 500; padding: 6px 10px; border-radius: 4px; background: rgba(255,255,255,0.1);">Licenses</a>
+            </nav>
+        </div>
+        <div class="nav-user">
+            <a href="/profile.html" style="color:white; text-decoration:none; margin-right:10px;">My Profile</a>
+            <span class="user-badge" id="userBadge">User</span>
+            <button class="btn-logout" onclick="logout()">Logout</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="reading-hero">
+            <h2 style="margin:0 0 6px 0; font-size:24px;">📚 My Online Reading Portal</h2>
+            <p style="margin:0; color:#94a3b8; font-size:14px;">Track your reading progress, resume page sessions, and access your licensed municipal e-books.</p>
+        </div>
+
+        <div id="alertContainer" class="alert" style="display: none;"></div>
+
+        <div style="margin-bottom: 24px;">
+            <h3 style="font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 16px;">Currently & Recently Read E-Books</h3>
+            <div id="readingGrid" class="reading-grid">
+                <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #64748b; background: white; border-radius: 12px;">
+                    Loading reading history...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/app.js"></script>
+    <script>
+        checkAuth(['ADMIN', 'LIBRARIAN', 'USER']);
+        document.getElementById('userBadge').innerText = `${getUserName()} (${getUserRole()})`;
+
+        async function loadMyReadingList() {
+            try {
+                const res = await apiFetch('/users/me/reading-progress');
+                const grid = document.getElementById('readingGrid');
+                grid.innerHTML = '';
+
+                if (!res.data || res.data.length === 0) {
+                    grid.innerHTML = `
+                        <div style="grid-column: 1/-1; text-align: center; padding: 60px 20px; background: white; border-radius: 12px; color: #64748b;">
+                            <h3>No active reading history</h3>
+                            <p style="font-size:14px; margin-top:6px;">Search our catalog and start reading your first e-book online!</p>
+                            <a href="/search.html" class="btn btn-primary" style="margin-top:12px; text-decoration:none; display:inline-block;">Explore E-Books 🔍</a>
+                        </div>
+                    `;
+                    return;
+                }
+
+                res.data.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'reading-card';
+
+                    const coverUrl = item.coverImage ? `/api/books/cover/${item.coverImage.split('/').pop()}` : '';
+                    const coverHtml = coverUrl ? `<img src="${coverUrl}">` : '📖';
+                    const pct = item.progressPercentage != null ? Math.round(item.progressPercentage) : 0;
+                    const dateStr = item.lastReadAt ? new Date(item.lastReadAt).toLocaleDateString() : 'N/A';
+
+                    card.innerHTML = `
+                        <div class="reading-card-cover">${coverHtml}</div>
+                        <div class="reading-card-body">
+                            <h4 style="font-size:16px; font-weight:700; color:#0f172a; margin:0 0 4px 0;">${item.bookTitle}</h4>
+                            <div style="font-size:13px; color:#64748b; margin-bottom:10px;">by ${item.bookAuthor || 'Unknown'}</div>
+                            
+                            <div class="progress-bar-bg">
+                                <div class="progress-bar-fill" style="width: ${pct}%;"></div>
+                            </div>
+                            <div class="progress-meta">
+                                <span>Page ${item.currentPage || 1} of ${item.totalPages || 1}</span>
+                                <span>${pct}% Complete</span>
+                            </div>
+
+                            <div style="margin-top:auto; padding-top:14px; border-top:1px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center;">
+                                <span style="font-size:11px; color:#94a3b8;">Read on ${dateStr}</span>
+                                <a href="/reader.html?bookId=${item.bookId}" class="btn btn-primary btn-sm" style="text-decoration:none;">Continue Reading ➔</a>
+                            </div>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+            } catch (err) {
+                showAlert('alertContainer', err.message);
+            }
+        }
+
+        loadMyReadingList();
+    </script>
+</body>
+</html>

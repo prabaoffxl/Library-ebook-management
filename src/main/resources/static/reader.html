@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Book Reader - Municipal Library</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #0f172a;
+            color: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        .reader-header {
+            background-color: #1e293b;
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #334155;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 10;
+        }
+        .reader-title-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .reader-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #ffffff;
+            margin: 0;
+        }
+        .reader-author {
+            font-size: 13px;
+            color: #94a3b8;
+        }
+        .reader-viewport {
+            flex: 1;
+            overflow: auto;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 20px;
+            position: relative;
+            background: #0f172a;
+        }
+        #pdfCanvas {
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            background: #ffffff;
+            border-radius: 4px;
+            max-width: 100%;
+        }
+        .reader-toolbar {
+            background-color: #1e293b;
+            padding: 10px 24px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 16px;
+            border-top: 1px solid #334155;
+            box-shadow: 0 -4px 12px rgba(0,0,0,0.2);
+            z-index: 10;
+            flex-wrap: wrap;
+        }
+        .tool-btn {
+            background: #334155;
+            color: #f8fafc;
+            border: 1px solid #475569;
+            padding: 6px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.2s;
+        }
+        .tool-btn:hover {
+            background: #2563eb;
+            border-color: #3b82f6;
+        }
+        .tool-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: #334155 !important;
+        }
+        .page-info {
+            font-size: 14px;
+            font-weight: 600;
+            color: #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .page-input {
+            width: 45px;
+            padding: 4px 6px;
+            border-radius: 4px;
+            border: 1px solid #475569;
+            background: #0f172a;
+            color: #ffffff;
+            text-align: center;
+            font-size: 14px;
+        }
+        .loading-spinner {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            color: #3b82f6;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(59,130,246,0.2);
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .error-card {
+            background: #ef4444;
+            color: white;
+            padding: 20px 30px;
+            border-radius: 12px;
+            max-width: 500px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(239,68,68,0.3);
+        }
+    </style>
+</head>
+<body>
+    <!-- Top Bar -->
+    <div class="reader-header">
+        <div class="reader-title-group">
+            <span style="font-size:24px;">📖</span>
+            <div>
+                <h1 class="reader-title" id="bookTitle">Loading E-Book...</h1>
+                <div class="reader-author" id="bookAuthor">Municipal Digital Asset Reader</div>
+            </div>
+            <span id="previewBadge" style="display:none; background:#eab308; color:#1e293b; font-size:11px; font-weight:800; padding:2px 8px; border-radius:10px; text-transform:uppercase;">PREVIEW MODE</span>
+        </div>
+        <div>
+            <button class="tool-btn" onclick="closeReader()" style="background:#dc2626; border-color:#ef4444;">✖ Close Reader</button>
+        </div>
+    </div>
+
+    <!-- Center Viewport -->
+    <div class="reader-viewport" id="viewport">
+        <div id="loadingSpinner" class="loading-spinner">
+            <div class="spinner"></div>
+            <span style="font-size:14px; font-weight:600;">Streaming Licensed E-Book Content...</span>
+        </div>
+
+        <div id="errorContainer" style="display:none;" class="error-card">
+            <h3 style="margin-top:0; font-size:18px;" id="errorTitle">Access Denied</h3>
+            <p id="errorMessage" style="font-size:14px; line-height:1.5;">A valid license is required to access this e-book.</p>
+            <button class="tool-btn" onclick="closeReader()" style="background:white; color:#dc2626; margin-top:10px;">Return to Book Catalog</button>
+        </div>
+
+        <canvas id="pdfCanvas"></canvas>
+    </div>
+
+    <!-- Bottom Control Bar -->
+    <div class="reader-toolbar" id="toolbar" style="display:none;">
+        <button class="tool-btn" id="btnZoomOut" onclick="zoomOut()">➖ Zoom Out</button>
+        <span style="font-size:13px; color:#cbd5e1; font-weight:600;" id="zoomLevel">100%</span>
+        <button class="tool-btn" id="btnZoomIn" onclick="zoomIn()">➕ Zoom In</button>
+        <button class="tool-btn" onclick="fitToScreen()">↔️ Fit Screen</button>
+
+        <div style="width: 1px; height: 24px; background: #334155; margin: 0 4px;"></div>
+
+        <button class="tool-btn" id="btnPrev" onclick="prevPage()">◀ Previous</button>
+        <div class="page-info">
+            Page <input type="number" id="pageInput" class="page-input" value="1" min="1" onchange="jumpToPage()"> / <span id="totalPages">1</span>
+        </div>
+        <button class="tool-btn" id="nextBtn" onclick="nextPage()">Next ▶</button>
+
+        <div style="width: 1px; height: 24px; background: #334155; margin: 0 4px;"></div>
+
+        <button class="tool-btn" onclick="toggleFullscreen()">📺 Fullscreen</button>
+    </div>
+
+    <script src="/js/app.js"></script>
+    <script>
+        checkAuth(['ADMIN', 'LIBRARIAN', 'USER']);
+
+        if (typeof pdfjsLib !== 'undefined') {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const bookId = urlParams.get('bookId') || urlParams.get('id');
+        const isPreview = urlParams.get('preview') === 'true';
+
+        let pdfDoc = null;
+        let pageNum = 1;
+        let totalNumPages = 1;
+        let pageRendering = false;
+        let pageNumPending = null;
+        let scale = 1.2;
+        const canvas = document.getElementById('pdfCanvas');
+        const ctx = canvas.getContext('2d');
+
+        if (!bookId) {
+            showError('Invalid Parameter', 'No book ID was provided.');
+        }
+
+        async function initReader() {
+            if (isPreview) {
+                document.getElementById('previewBadge').style.display = 'inline-block';
+            }
+
+            try {
+                // Fetch book metadata
+                const bookRes = await apiFetch(`/books/${bookId}`);
+                if (bookRes.data) {
+                    document.getElementById('bookTitle').innerText = bookRes.data.title;
+                    document.getElementById('bookAuthor').innerText = `by ${bookRes.data.author}`;
+                }
+            } catch (err) {
+                console.warn('Could not load book metadata', err);
+            }
+
+            // Resume reading progress if not preview
+            if (!isPreview) {
+                try {
+                    const progRes = await apiFetch(`/books/${bookId}/progress`);
+                    if (progRes.data && progRes.data.currentPage > 1) {
+                        pageNum = progRes.data.currentPage;
+                    }
+                } catch (err) {
+                    console.log('No previous reading progress found');
+                }
+            }
+
+            loadPdfDocument();
+        }
+
+        async function loadPdfDocument() {
+            const token = getToken();
+            const endpoint = isPreview ? `/api/books/${bookId}/preview` : `/api/books/${bookId}/read`;
+
+            try {
+                const pdfData = await pdfjsLib.getDocument({
+                    url: endpoint,
+                    httpHeaders: { 'Authorization': `Bearer ${token}` },
+                    withCredentials: true
+                }).promise;
+
+                pdfDoc = pdfData;
+                totalNumPages = pdfDoc.numPages;
+                document.getElementById('totalPages').innerText = totalNumPages;
+                document.getElementById('loadingSpinner').style.display = 'none';
+                document.getElementById('toolbar').style.display = 'flex';
+
+                if (pageNum > totalNumPages) pageNum = totalNumPages;
+                renderPage(pageNum);
+            } catch (err) {
+                document.getElementById('loadingSpinner').style.display = 'none';
+                let errMsg = err.message || 'A valid license is required to access this e-book.';
+                if (err.name === 'PasswordException') errMsg = 'This PDF document is password protected.';
+                showError('E-Book Access Restricted', errMsg);
+            }
+        }
+
+        function renderPage(num) {
+            pageRendering = true;
+            document.getElementById('pageInput').value = num;
+            updateButtons();
+
+            pdfDoc.getPage(num).then(function(page) {
+                const viewport = page.getViewport({ scale: scale });
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                const renderContext = {
+                    canvasContext: ctx,
+                    viewport: viewport
+                };
+                const renderTask = page.render(renderContext);
+
+                renderTask.promise.then(function() {
+                    pageRendering = false;
+                    if (pageNumPending !== null) {
+                        renderPage(pageNumPending);
+                        pageNumPending = null;
+                    }
+                    saveProgress();
+                });
+            });
+        }
+
+        function queueRenderPage(num) {
+            if (pageRendering) {
+                pageNumPending = num;
+            } else {
+                renderPage(num);
+            }
+        }
+
+        function prevPage() {
+            if (pageNum <= 1) return;
+            pageNum--;
+            queueRenderPage(pageNum);
+        }
+
+        function nextPage() {
+            if (pageNum >= totalNumPages) return;
+            pageNum++;
+            queueRenderPage(pageNum);
+        }
+
+        function jumpToPage() {
+            const val = parseInt(document.getElementById('pageInput').value);
+            if (val >= 1 && val <= totalNumPages) {
+                pageNum = val;
+                queueRenderPage(pageNum);
+            } else {
+                document.getElementById('pageInput').value = pageNum;
+            }
+        }
+
+        function zoomIn() {
+            scale += 0.2;
+            document.getElementById('zoomLevel').innerText = Math.round(scale * 100) + '%';
+            queueRenderPage(pageNum);
+        }
+
+        function zoomOut() {
+            if (scale <= 0.6) return;
+            scale -= 0.2;
+            document.getElementById('zoomLevel').innerText = Math.round(scale * 100) + '%';
+            queueRenderPage(pageNum);
+        }
+
+        function fitToScreen() {
+            const viewportWidth = document.getElementById('viewport').clientWidth - 60;
+            if (viewportWidth > 0 && pdfDoc) {
+                pdfDoc.getPage(pageNum).then(function(page) {
+                    const unscaledViewport = page.getViewport({ scale: 1.0 });
+                    scale = viewportWidth / unscaledViewport.width;
+                    document.getElementById('zoomLevel').innerText = Math.round(scale * 100) + '%';
+                    queueRenderPage(pageNum);
+                });
+            }
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => console.error(err));
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+            }
+        }
+
+        function updateButtons() {
+            document.getElementById('btnPrev').disabled = pageNum <= 1;
+            document.getElementById('nextBtn').disabled = pageNum >= totalNumPages;
+        }
+
+        async function saveProgress() {
+            if (isPreview) return;
+            try {
+                await apiFetch(`/books/${bookId}/progress`, {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        currentPage: pageNum,
+                        totalPages: totalNumPages
+                    })
+                });
+            } catch (err) {
+                console.error('Failed to update reading progress', err);
+            }
+        }
+
+        function showError(title, message) {
+            document.getElementById('errorTitle').innerText = title;
+            document.getElementById('errorMessage').innerText = message;
+            document.getElementById('errorContainer').style.display = 'block';
+            document.getElementById('canvas').style.display = 'none';
+            document.getElementById('toolbar').style.display = 'none';
+        }
+
+        function closeReader() {
+            if (window.history.length > 1) {
+                window.history.back();
+            } else {
+                window.location.href = `/book-details.html?id=${bookId}`;
+            }
+        }
+
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === 'PageDown') nextPage();
+            if (e.key === 'ArrowLeft' || e.key === 'PageUp') prevPage();
+            if (e.key === '+' || e.key === '=') zoomIn();
+            if (e.key === '-') zoomOut();
+            if (e.key === 'Escape') closeReader();
+        });
+
+        initReader();
+    </script>
+</body>
+</html>

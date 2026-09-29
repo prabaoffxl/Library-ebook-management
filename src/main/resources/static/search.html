@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Search & Smart Book Discovery - Municipal Library</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .search-hero {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            color: white;
+            padding: 30px 20px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2);
+        }
+        .search-box-container {
+            position: relative;
+            max-width: 700px;
+            margin: 20px 0 10px 0;
+        }
+        .search-box-container input {
+            width: 100%;
+            padding: 14px 20px;
+            font-size: 16px;
+            border-radius: 30px;
+            border: 2px solid #3b82f6;
+            outline: none;
+            box-shadow: 0 4px 12px rgba(59,130,246,0.3);
+            background: #ffffff;
+            color: #1e293b;
+        }
+        .suggestions-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            color: #1e293b;
+            border-radius: 12px;
+            margin-top: 6px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            z-index: 1000;
+            overflow: hidden;
+            display: none;
+        }
+        .suggestion-item {
+            padding: 12px 20px;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f5f9;
+            transition: background 0.2s;
+        }
+        .suggestion-item:hover {
+            background: #f8fafc;
+            color: #2563eb;
+        }
+        .history-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            margin-top: 12px;
+        }
+        .history-pill {
+            background: rgba(255,255,255,0.15);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .history-pill:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        .layout-grid {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 24px;
+        }
+        @media (max-width: 850px) {
+            .layout-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .filter-sidebar {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            height: fit-content;
+        }
+        .filter-group {
+            margin-bottom: 18px;
+        }
+        .filter-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .filter-group select, .filter-group input {
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+            font-size: 14px;
+        }
+        .book-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 20px;
+        }
+        .book-card {
+            background: white;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .book-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 20px -5px rgba(0,0,0,0.1);
+        }
+        .book-card-cover {
+            height: 180px;
+            background: #f1f5f9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            overflow: hidden;
+            position: relative;
+        }
+        .book-card-cover img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .book-card-body {
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+        .book-card-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 4px;
+            line-height: 1.3;
+        }
+        .book-card-author {
+            font-size: 13px;
+            color: #64748b;
+            margin-bottom: 10px;
+        }
+        .pill-tag {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 4px;
+            background: #eff6ff;
+            color: #2563eb;
+            margin-right: 4px;
+            margin-bottom: 6px;
+        }
+        .location-info {
+            font-size: 12px;
+            color: #059669;
+            margin-top: auto;
+            padding-top: 10px;
+            border-top: 1px solid #f1f5f9;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .pagination-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin-top: 24px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <h1>Municipal Library System</h1>
+            <nav style="display: flex; gap: 12px; align-items: center;">
+                <a href="/index.html" style="color: white; text-decoration: none; font-weight: 500; padding: 6px 10px; border-radius: 4px; background: rgba(255,255,255,0.1);">Dashboard</a>
+                <a href="/search.html" style="color: white; text-decoration: none; font-weight: 600; padding: 6px 10px; border-radius: 4px; background: rgba(255,255,255,0.25);">Search 🔍</a>
+                <a href="/my-reading.html" style="color: white; text-decoration: none; font-weight: 500; padding: 6px 10px; border-radius: 4px; background: rgba(255,255,255,0.1);">My Reading 📚</a>
+                <a href="/libraries.html" style="color: white; text-decoration: none; font-weight: 500; padding: 6px 10px; border-radius: 4px; background: rgba(255,255,255,0.1);">Libraries</a>
+                <a href="/licenses.html" style="color: white; text-decoration: none; font-weight: 500; padding: 6px 10px; border-radius: 4px; background: rgba(255,255,255,0.1);">Licenses</a>
+                <a href="/assets.html" style="color: white; text-decoration: none; font-weight: 500; padding: 6px 10px; border-radius: 4px; background: rgba(255,255,255,0.1);">Assets</a>
+                <a href="/reports.html" style="color: white; text-decoration: none; font-weight: 500; padding: 6px 10px; border-radius: 4px; background: rgba(255,255,255,0.1);">Reports 📊</a>
+            </nav>
+        </div>
+        <div class="nav-user">
+            <a href="/profile.html" style="color:white; text-decoration:none; margin-right:10px;">My Profile</a>
+            <span class="user-badge" id="userBadge">User</span>
+            <button class="btn-logout" onclick="logout()">Logout</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Hero Search Header -->
+        <div class="search-hero">
+            <h2 style="font-size: 26px; font-weight: 800; margin-bottom: 8px;">Explore Municipal E-Books & Assets</h2>
+            <p style="color: #94a3b8; font-size: 14px;">Multi-field search across title, author, ISBN, category, publisher, and language</p>
+            
+            <div class="search-box-container">
+                <input type="text" id="searchInput" placeholder="Search books, authors, topics, or ISBN..." autocomplete="off">
+                <div id="suggestionsDropdown" class="suggestions-dropdown"></div>
+            </div>
+
+            <div class="history-pills" id="historyPills">
+                <span style="font-size: 12px; color: #94a3b8; font-weight: 600;">Recent Searches:</span>
+                <span id="historyPillsContainer"></span>
+                <button onclick="clearSearchHistory()" style="background:none; border:none; color:#f87171; font-size:12px; cursor:pointer; text-decoration:underline; margin-left: auto;">Clear History</button>
+            </div>
+        </div>
+
+        <div id="alertContainer" class="alert" style="display: none;"></div>
+
+        <!-- Main Layout -->
+        <div class="layout-grid">
+            <!-- Sidebar Filter -->
+            <div class="filter-sidebar">
+                <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+                    Filters & Scope
+                    <button class="btn btn-secondary btn-sm" onclick="resetFilters()">Reset</button>
+                </h3>
+
+                <div class="filter-group">
+                    <label>Category</label>
+                    <select id="filterCategory" onchange="triggerSearch(0)">
+                        <option value="">All Categories</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label>Language</label>
+                    <select id="filterLanguage" onchange="triggerSearch(0)">
+                        <option value="">All Languages</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label>Author</label>
+                    <input type="text" id="filterAuthor" placeholder="Filter by author..." oninput="debounceSearch()">
+                </div>
+
+                <div class="filter-group">
+                    <label>Publisher</label>
+                    <input type="text" id="filterPublisher" placeholder="Filter by publisher..." oninput="debounceSearch()">
+                </div>
+
+                <div class="filter-group">
+                    <label>Publication Year</label>
+                    <input type="number" id="filterYear" placeholder="e.g. 2024" oninput="debounceSearch()">
+                </div>
+
+                <div class="filter-group">
+                    <label>Library Branch</label>
+                    <select id="filterLibrary" onchange="triggerSearch(0)">
+                        <option value="">All Library Branches</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label>Availability Status</label>
+                    <select id="filterStatus" onchange="triggerSearch(0)">
+                        <option value="">Any Status</option>
+                        <option value="AVAILABLE">Available Only</option>
+                        <option value="RESERVED">Reserved</option>
+                        <option value="UNAVAILABLE">Unavailable</option>
+                    </select>
+                </div>
+
+                <div class="filter-group" style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="filterLicense" style="width: auto;" onchange="triggerSearch(0)">
+                    <label for="filterLicense" style="margin: 0; text-transform: none; cursor: pointer;">Active License Only</label>
+                </div>
+            </div>
+
+            <!-- Content Area -->
+            <div>
+                <!-- Control bar -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; background: white; padding: 12px 20px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <div style="font-size: 14px; font-weight: 600; color: #475569;" id="resultCountHeader">
+                        Found 0 books
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <label style="font-size: 13px; font-weight: 600; color: #475569;">Sort By:</label>
+                        <select id="sortSelect" onchange="triggerSearch(0)" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 13px;">
+                            <option value="createdAt,desc">Newest Added</option>
+                            <option value="title,asc">Title (A - Z)</option>
+                            <option value="title,desc">Title (Z - A)</option>
+                            <option value="author,asc">Author (A - Z)</option>
+                            <option value="publicationYear,desc">Publication Year (Newest)</option>
+                            <option value="publicationYear,asc">Publication Year (Oldest)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Book Cards Grid -->
+                <div id="booksGrid" class="book-cards-grid">
+                    <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #64748b;">Loading books...</div>
+                </div>
+
+                <!-- Pagination -->
+                <div class="pagination-container" id="paginationContainer"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/app.js"></script>
+    <script>
+        checkAuth(['ADMIN', 'LIBRARIAN', 'USER']);
+        document.getElementById('userBadge').innerText = `${getUserName()} (${getUserRole()})`;
+
+        let currentPage = 0;
+        let totalPages = 0;
+        let debounceTimer;
+
+        async function initSearchPortal() {
+            loadCategories();
+            loadLanguages();
+            loadLibraries();
+            loadSearchHistory();
+
+            // Handle URL params if any
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('q')) {
+                document.getElementById('searchInput').value = urlParams.get('q');
+            }
+            if (urlParams.has('category')) {
+                document.getElementById('filterCategory').value = urlParams.get('category');
+            }
+
+            triggerSearch(0);
+        }
+
+        async function loadCategories() {
+            try {
+                const res = await apiFetch('/books/categories');
+                if (res.data) {
+                    const select = document.getElementById('filterCategory');
+                    res.data.forEach(item => {
+                        const opt = document.createElement('option');
+                        opt.value = item.category;
+                        opt.innerText = `${item.category} (${item.count})`;
+                        select.appendChild(opt);
+                    });
+                }
+            } catch (err) {
+                console.error('Failed to load categories', err);
+            }
+        }
+
+        async function loadLanguages() {
+            try {
+                const res = await apiFetch('/books/languages');
+                if (res.data) {
+                    const select = document.getElementById('filterLanguage');
+                    res.data.forEach(item => {
+                        const opt = document.createElement('option');
+                        opt.value = item.language;
+                        opt.innerText = `${item.language} (${item.count})`;
+                        select.appendChild(opt);
+                    });
+                }
+            } catch (err) {
+                console.error('Failed to load languages', err);
+            }
+        }
+
+        async function loadLibraries() {
+            try {
+                const res = await apiFetch('/libraries/active');
+                if (res.data) {
+                    const select = document.getElementById('filterLibrary');
+                    res.data.forEach(lib => {
+                        const opt = document.createElement('option');
+                        opt.value = lib.id;
+                        opt.innerText = `${lib.name} (${lib.city})`;
+                        select.appendChild(opt);
+                    });
+                }
+            } catch (err) {
+                console.error('Failed to load libraries', err);
+            }
+        }
+
+        async function loadSearchHistory() {
+            try {
+                const res = await apiFetch('/search/history?page=0&size=8');
+                const container = document.getElementById('historyPillsContainer');
+                container.innerHTML = '';
+                if (res.data && res.data.content && res.data.content.length > 0) {
+                    res.data.content.forEach(h => {
+                        const pill = document.createElement('span');
+                        pill.className = 'history-pill';
+                        pill.innerText = h.query;
+                        pill.onclick = () => {
+                            document.getElementById('searchInput').value = h.query;
+                            triggerSearch(0);
+                        };
+                        container.appendChild(pill);
+                    });
+                } else {
+                    container.innerHTML = '<span style="font-size:12px; color:#64748b;">No recent searches</span>';
+                }
+            } catch (err) {
+                console.error('Failed to load search history', err);
+            }
+        }
+
+        async function clearSearchHistory() {
+            try {
+                await apiFetch('/search/history', { method: 'DELETE' });
+                loadSearchHistory();
+            } catch (err) {
+                showAlert('alertContainer', err.message);
+            }
+        }
+
+        // Live Autocomplete Suggestions
+        const searchInput = document.getElementById('searchInput');
+        const suggestionsDropdown = document.getElementById('suggestionsDropdown');
+
+        searchInput.addEventListener('input', () => {
+            clearTimeout(debounceTimer);
+            const query = searchInput.value.trim();
+            if (query.length < 2) {
+                suggestionsDropdown.style.display = 'none';
+                return;
+            }
+
+            debounceTimer = setTimeout(async () => {
+                try {
+                    const res = await apiFetch(`/books/search/suggestions?query=${encodeURIComponent(query)}`);
+                    if (res.data && res.data.length > 0) {
+                        suggestionsDropdown.innerHTML = '';
+                        res.data.forEach(item => {
+                            const div = document.createElement('div');
+                            div.className = 'suggestion-item';
+                            div.innerText = item;
+                            div.onclick = () => {
+                                searchInput.value = item;
+                                suggestionsDropdown.style.display = 'none';
+                                triggerSearch(0);
+                            };
+                            suggestionsDropdown.appendChild(div);
+                        });
+                        suggestionsDropdown.style.display = 'block';
+                    } else {
+                        suggestionsDropdown.style.display = 'none';
+                    }
+                } catch (err) {
+                    suggestionsDropdown.style.display = 'none';
+                }
+            }, 300);
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!searchInput.contains(e.target) && !suggestionsDropdown.contains(e.target)) {
+                suggestionsDropdown.style.display = 'none';
+            }
+        });
+
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                suggestionsDropdown.style.display = 'none';
+                triggerSearch(0);
+            }
+        });
+
+        function debounceSearch() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => triggerSearch(0), 400);
+        }
+
+        async function triggerSearch(page = 0) {
+            currentPage = page;
+            const query = searchInput.value.trim();
+            const category = document.getElementById('filterCategory').value;
+            const language = document.getElementById('filterLanguage').value;
+            const author = document.getElementById('filterAuthor').value.trim();
+            const publisher = document.getElementById('filterPublisher').value.trim();
+            const year = document.getElementById('filterYear').value.trim();
+            const libraryId = document.getElementById('filterLibrary').value;
+            const status = document.getElementById('filterStatus').value;
+            const licenseAvailable = document.getElementById('filterLicense').checked;
+
+            const sortVal = document.getElementById('sortSelect').value.split(',');
+            const sortBy = sortVal[0];
+            const sortDir = sortVal[1];
+
+            let params = new URLSearchParams();
+            params.append('page', page);
+            params.append('size', 12);
+            params.append('sortBy', sortBy);
+            params.append('sortDir', sortDir);
+
+            if (query) params.append('query', query);
+            if (category) params.append('category', category);
+            if (language) params.append('language', language);
+            if (author) params.append('author', author);
+            if (publisher) params.append('publisher', publisher);
+            if (year) params.append('publicationYear', year);
+            if (libraryId) params.append('libraryId', libraryId);
+            if (status) params.append('status', status);
+            if (licenseAvailable) params.append('licenseAvailable', 'true');
+
+            try {
+                const res = await apiFetch(`/books/search?${params.toString()}`);
+                renderResults(res.data);
+                if (query) loadSearchHistory();
+            } catch (err) {
+                showAlert('alertContainer', err.message);
+            }
+        }
+
+        function renderResults(pageData) {
+            const grid = document.getElementById('booksGrid');
+            const header = document.getElementById('resultCountHeader');
+            grid.innerHTML = '';
+
+            if (!pageData || !pageData.content || pageData.content.length === 0) {
+                grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 60px 20px; background: white; border-radius: 12px; color: #64748b;"><h3>No books matching your criteria</h3><p style="font-size:14px; margin-top:6px;">Try adjusting your search terms or filters.</p></div>';
+                header.innerText = 'Found 0 books';
+                document.getElementById('paginationContainer').innerHTML = '';
+                return;
+            }
+
+            header.innerText = `Found ${pageData.totalElements} book${pageData.totalElements === 1 ? '' : 's'}`;
+            totalPages = pageData.totalPages;
+
+            pageData.content.forEach(book => {
+                const card = document.createElement('div');
+                card.className = 'book-card';
+                const coverUrl = book.coverImage ? `/api/books/cover/${book.coverImage.split('/').pop()}` : '';
+                const coverHtml = coverUrl ? `<img src="${coverUrl}">` : '📖';
+
+                const isLicenseActive = book.licenseStatus === 'ACTIVE';
+                const licBadgeClass = isLicenseActive ? 'badge-active' : 'badge-expired';
+
+                card.innerHTML = `
+                    <div class="book-card-cover">${coverHtml}</div>
+                    <div class="book-card-body">
+                        <div class="book-card-title">${book.title}</div>
+                        <div class="book-card-author">by ${book.author} (${book.publicationYear || 'N/A'})</div>
+                        <div>
+                            <span class="pill-tag">${book.category || 'General'}</span>
+                            <span class="pill-tag" style="background:#f1f5f9; color:#475569;">${book.language || 'English'}</span>
+                            <span class="badge ${licBadgeClass}" style="font-size:10px; padding:2px 6px;">${book.licenseStatus || 'NO_LICENSE'}</span>
+                        </div>
+                        <div class="location-info">
+                            <span>🏛️ ${book.availableLibrariesCount} Municipal ${book.availableLibrariesCount === 1 ? 'Branch' : 'Branches'}</span>
+                            <a href="/book-details.html?id=${book.id}" class="btn btn-primary btn-sm" style="font-size:12px; text-decoration:none;">View Details ➔</a>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+
+            renderPagination(pageData.pageNo, pageData.totalPages);
+        }
+
+        function renderPagination(current, total) {
+            const container = document.getElementById('paginationContainer');
+            container.innerHTML = '';
+            if (total <= 1) return;
+
+            const prevBtn = document.createElement('button');
+            prevBtn.className = 'btn btn-secondary btn-sm';
+            prevBtn.innerText = '← Previous';
+            prevBtn.disabled = current === 0;
+            prevBtn.onclick = () => triggerSearch(current - 1);
+            container.appendChild(prevBtn);
+
+            for (let i = 0; i < total; i++) {
+                if (total > 7 && Math.abs(i - current) > 2 && i !== 0 && i !== total - 1) continue;
+                const pageBtn = document.createElement('button');
+                pageBtn.className = i === current ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm';
+                pageBtn.innerText = i + 1;
+                pageBtn.onclick = () => triggerSearch(i);
+                container.appendChild(pageBtn);
+            }
+
+            const nextBtn = document.createElement('button');
+            nextBtn.className = 'btn btn-secondary btn-sm';
+            nextBtn.innerText = 'Next →';
+            nextBtn.disabled = current === total - 1;
+            nextBtn.onclick = () => triggerSearch(current + 1);
+            container.appendChild(nextBtn);
+        }
+
+        function resetFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('filterCategory').value = '';
+            document.getElementById('filterLanguage').value = '';
+            document.getElementById('filterAuthor').value = '';
+            document.getElementById('filterPublisher').value = '';
+            document.getElementById('filterYear').value = '';
+            document.getElementById('filterLibrary').value = '';
+            document.getElementById('filterStatus').value = '';
+            document.getElementById('filterLicense').checked = false;
+            document.getElementById('sortSelect').value = 'createdAt,desc';
+            triggerSearch(0);
+        }
+
+        initSearchPortal();
+    </script>
+</body>
+</html>

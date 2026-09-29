@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Municipal E-Library - Patron Dashboard</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .nav-links {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 6px 12px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .nav-links a:hover, .nav-links a.active {
+            background: rgba(255, 255, 255, 0.25);
+        }
+    </style>
+</head>
+<body>
+    <header style="background-color: var(--primary-color);">
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <h1>Municipal E-Book Catalog</h1>
+            <nav class="nav-links">
+                <a href="/user-dashboard.html" class="active">Catalog</a>
+                <a href="/search.html">Search 🔍</a>
+                <a href="/my-reading.html">My Reading 📚</a>
+                <a href="/libraries.html">Library Branches</a>
+                <a href="/notifications.html">Notifications 🔔 <span class="notif-badge-counter" style="display:none; background:#dc3545; color:white; border-radius:10px; padding:2px 6px; font-size:12px;">0</span></a>
+                <a href="/profile.html">My Profile</a>
+            </nav>
+        </div>
+        <div class="nav-user">
+            <span class="user-badge" id="userBadge">Patron</span>
+            <button class="btn-logout" onclick="logout()">Logout</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Quick Welcome & Stats Bar -->
+        <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 20px;">
+            <div class="stat-card">
+                <h3>Welcome Patron</h3>
+                <p style="font-size: 1.1rem; margin:0;" id="welcomeUserName">Municipal Member</p>
+            </div>
+            <div class="stat-card success">
+                <h3>Active Library Branches</h3>
+                <p id="statActiveLibraries">0</p>
+            </div>
+            <div class="stat-card accent">
+                <h3>Catalog Books</h3>
+                <p id="statTotalBooks">0</p>
+            </div>
+        </div>
+
+        <!-- Search & Filter Controls -->
+        <div class="controls-bar">
+            <div class="search-filter-group" style="flex-wrap: wrap;">
+                <input type="text" id="userSearch" placeholder="Search books by title, author, category, ISBN..." style="flex: 2; min-width: 250px;">
+                <select id="libraryFilter" onchange="loadCatalog()">
+                    <option value="">All Municipal Branches</option>
+                </select>
+                <select id="userCategoryFilter" onchange="loadCatalog()">
+                    <option value="">All Categories</option>
+                    <option value="Tamil Literature">Tamil Literature</option>
+                    <option value="Computer Science">Computer Science</option>
+                    <option value="Technology">Technology</option>
+                    <option value="History">History</option>
+                    <option value="Science">Science</option>
+                </select>
+                <select id="userLanguageFilter" onchange="loadCatalog()">
+                    <option value="">All Languages</option>
+                    <option value="English">English</option>
+                    <option value="Tamil">Tamil</option>
+                </select>
+            </div>
+            <button class="btn btn-primary" onclick="loadCatalog()">Search Catalog</button>
+        </div>
+
+        <div id="alertContainer" class="alert" style="display: none;"></div>
+
+        <!-- E-Book Cards Grid -->
+        <div id="booksGrid" class="books-grid">
+            <p style="grid-column: 1/-1; text-align: center;">Loading municipal catalog...</p>
+        </div>
+    </div>
+
+    <!-- Book Details Modal -->
+    <div id="detailsModal" class="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center;">
+        <div class="modal-content" style="background:white; padding:25px; border-radius:8px; width:550px; max-height:90vh; overflow-y:auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:10px;">
+                <h2 id="detailTitle" style="margin:0;">Book Details</h2>
+                <button class="close-btn" onclick="closeModal('detailsModal')" style="border:none; background:none; font-size:1.5rem; cursor:pointer;">&times;</button>
+            </div>
+            <div id="detailBody" style="margin-top:15px;">
+                <!-- Populated dynamically -->
+            </div>
+            <div style="margin-top: 1.5rem; text-align: right;" id="detailActionContainer">
+                <button class="btn btn-secondary" onclick="closeModal('detailsModal')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            initApp();
+            loadUserProfileHeader();
+            loadLibraryDropdown();
+            loadCatalog();
+        });
+
+        function loadUserProfileHeader() {
+            fetchWithAuth('/api/users/me')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.data) {
+                        document.getElementById('welcomeUserName').innerText = data.data.name;
+                    }
+                });
+        }
+
+        function loadLibraryDropdown() {
+            fetchWithAuth('/api/libraries/active')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.data && data.data.content) {
+                        const libs = data.data.content;
+                        document.getElementById('statActiveLibraries').innerText = libs.length;
+                        const select = document.getElementById('libraryFilter');
+                        select.innerHTML = '<option value="">All Municipal Branches</option>' +
+                            libs.map(l => `<option value="${l.id}">${escapeHtml(l.name)} (${l.code})</option>`).join('');
+                    }
+                });
+        }
+
+        function loadCatalog() {
+            const query = document.getElementById('userSearch').value.trim();
+            const category = document.getElementById('userCategoryFilter').value;
+            const language = document.getElementById('userLanguageFilter').value;
+            const libraryId = document.getElementById('libraryFilter').value;
+
+            let url = '/api/books';
+            if (libraryId) {
+                url = `/api/libraries/${libraryId}/books`;
+            } else if (query) {
+                url = `/api/books/search?query=${encodeURIComponent(query)}`;
+            } else if (category || language) {
+                url = `/api/books/filter?category=${encodeURIComponent(category)}&language=${encodeURIComponent(language)}`;
+            }
+
+            fetchWithAuth(url)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.data) {
+                        const content = data.data.content || [];
+                        const books = libraryId ? content.map(item => item.book) : content;
+                        document.getElementById('statTotalBooks').innerText = data.data.totalElements || books.length;
+                        renderBooksGrid(books);
+                    }
+                })
+                .catch(err => {
+                    document.getElementById('booksGrid').innerHTML = `<p style="grid-column: 1/-1; color: red; text-align: center;">Failed to load catalog: ${err.message}</p>`;
+                });
+        }
+
+        function renderBooksGrid(books) {
+            const grid = document.getElementById('booksGrid');
+
+            if (!books || books.length === 0) {
+                grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center;">No e-books found matching your search.</p>';
+                return;
+            }
+
+            grid.innerHTML = books.map(book => {
+                const coverUrl = book.coverImage ? ('/api/books/cover/' + book.coverImage.split('/').pop()) : 'https://via.placeholder.com/150x200?text=No+Cover';
+                const statusBadge = book.status === 'AVAILABLE' ? 'badge-success' : 'badge-danger';
+
+                return `
+                    <div class="book-card" style="background:white; border-radius:8px; padding:15px; box-shadow:0 2px 4px rgba(0,0,0,0.1); display:flex; flex-direction:column; justify-content:space-between;">
+                        <div style="text-align:center; margin-bottom:10px;">
+                            <img src="${coverUrl}" alt="${escapeHtml(book.title)}" style="height:160px; max-width:100%; object-fit:cover; border-radius:4px; margin-bottom:10px;">
+                            <h3 style="font-size:1.05rem; margin:5px 0;">${escapeHtml(book.title)}</h3>
+                            <p style="color:#64748b; font-size:0.85rem; margin:0 0 5px 0;">by ${escapeHtml(book.author)}</p>
+                            <span class="badge badge-info">${escapeHtml(book.category)}</span>
+                            <span class="badge ${statusBadge}">${book.status}</span>
+                        </div>
+                        <div style="display:flex; gap:10px; margin-top:10px;">
+                            <button class="btn btn-sm btn-secondary" style="flex:1;" onclick="viewBookDetails(${book.id})">Details</button>
+                            <button class="btn btn-sm btn-primary" style="flex:1;" onclick="downloadEbook(${book.id})">Download</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function viewBookDetails(bookId) {
+            fetchWithAuth(`/api/books/${bookId}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.data) {
+                        const b = data.data;
+                        const coverUrl = b.coverImage ? ('/api/books/cover/' + b.coverImage.split('/').pop()) : 'https://via.placeholder.com/150x200?text=No+Cover';
+
+                        document.getElementById('detailTitle').innerText = b.title;
+                        document.getElementById('detailBody').innerHTML = `
+                            <div style="display:flex; gap:20px;">
+                                <img src="${coverUrl}" style="width:120px; height:170px; object-fit:cover; border-radius:4px;">
+                                <div>
+                                    <p style="margin:0 0 5px 0;"><strong>Author:</strong> ${escapeHtml(b.author)}</p>
+                                    <p style="margin:0 0 5px 0;"><strong>ISBN:</strong> ${escapeHtml(b.isbn)}</p>
+                                    <p style="margin:0 0 5px 0;"><strong>Category:</strong> ${escapeHtml(b.category)}</p>
+                                    <p style="margin:0 0 5px 0;"><strong>Language:</strong> ${escapeHtml(b.language)}</p>
+                                    <p style="margin:0 0 5px 0;"><strong>Publisher:</strong> ${escapeHtml(b.publisher || 'N/A')} (${b.publicationYear || 'N/A'})</p>
+                                    <p style="margin:0 0 5px 0;"><strong>Format:</strong> ${b.fileType || 'PDF/EPUB'} (${formatBytes(b.fileSize)})</p>
+                                    <p style="margin:10px 0 0 0;"><strong>Description:</strong></p>
+                                    <p style="color:#475569; font-size:0.9rem; margin:5px 0;">${escapeHtml(b.description || 'No description available.')}</p>
+                                </div>
+                            </div>
+                        `;
+                        document.getElementById('detailActionContainer').innerHTML = `
+                            <button class="btn btn-secondary" onclick="closeModal('detailsModal')">Close</button>
+                            <button class="btn btn-primary" onclick="downloadEbook(${b.id})">Download E-Book</button>
+                        `;
+                        document.getElementById('detailsModal').style.display = 'flex';
+                    }
+                });
+        }
+
+        function downloadEbook(bookId) {
+            const token = localStorage.getItem('token');
+            fetch(`/api/books/${bookId}/download`, {
+                headers: { 'Authorization': 'Bearer ' + token }
+            })
+            .then(res => {
+                if (!res.ok) {
+                    return res.json().then(err => { throw new Error(err.message || 'Download failed'); });
+                }
+                const disposition = res.headers.get('Content-Disposition');
+                let filename = `ebook_${bookId}.pdf`;
+                if (disposition && disposition.indexOf('filename=') !== -1) {
+                    filename = disposition.split('filename=')[1].replace(/"/g, '');
+                }
+                return res.blob().then(blob => ({ blob, filename }));
+            })
+            .then(({ blob, filename }) => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+                alert('E-Book download started successfully!');
+            })
+            .catch(err => alert('Download Error: ' + err.message));
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        function formatBytes(bytes) {
+            if (!bytes || bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>

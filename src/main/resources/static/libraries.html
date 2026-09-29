@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Municipal Library Branches - Municipal Library</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .nav-links {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 6px 12px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .nav-links a:hover, .nav-links a.active {
+            background: rgba(255, 255, 255, 0.25);
+        }
+        .library-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .library-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .library-card h3 {
+            margin-top: 0;
+            color: #1e293b;
+        }
+        .library-code {
+            display: inline-block;
+            background: #e2e8f0;
+            color: #334155;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        .library-stats {
+            display: flex;
+            gap: 15px;
+            margin: 15px 0;
+            background: #f8fafc;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <h1>Municipal Library Branches</h1>
+            <nav class="nav-links">
+                <a href="/index.html">Books</a>
+                <a href="/libraries.html" class="active">Libraries</a>
+                <a href="/licenses.html" class="nav-admin-lib">Licenses</a>
+                <a href="/assets.html" class="nav-admin-lib">Digital Assets</a>
+                <a href="/reports.html" class="nav-admin-lib">Reports 📊</a>
+                <a href="/notifications.html">Notifications 🔔 <span class="notif-badge-counter" style="display:none; background:#dc3545; color:white; border-radius:10px; padding:2px 6px; font-size:12px;">0</span></a>
+            </nav>
+        </div>
+        <div class="nav-user">
+            <a href="/profile.html" style="color:white; text-decoration:none; margin-right:10px;">My Profile</a>
+            <span class="user-badge" id="userBadge">User</span>
+            <button class="btn-logout" onclick="logout()">Logout</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Header Controls -->
+        <div class="controls-bar">
+            <div class="search-filter-group">
+                <input type="text" id="librarySearch" placeholder="Search by name, code, city, state..." style="width: 300px;" onkeyup="handleSearchKey(event)">
+                <button class="btn btn-secondary" onclick="loadLibraries()">Search</button>
+            </div>
+            <button class="btn btn-primary" id="btnCreateLibrary" style="display:none;" onclick="openCreateLibraryModal()">+ Add New Branch</button>
+        </div>
+
+        <!-- Library Cards Grid -->
+        <div class="library-grid" id="libraryGrid">
+            <div style="grid-column: 1 / -1; text-align:center; padding:40px;">Loading library branches...</div>
+        </div>
+    </div>
+
+    <!-- Create/Edit Library Modal -->
+    <div id="libraryModal" class="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; z-index:1000;">
+        <div class="modal-content" style="background:white; padding:25px; border-radius:8px; width:500px; max-height:90vh; overflow-y:auto;">
+            <h2 id="modalTitle" style="margin-top:0;">Add New Library Branch</h2>
+            <form id="libraryForm" onsubmit="handleSaveLibrary(event)">
+                <input type="hidden" id="libraryId">
+                <div style="margin-bottom:12px;">
+                    <label style="display:block; font-weight:600; margin-bottom:4px;">Branch Name *</label>
+                    <input type="text" id="libName" required style="width:100%; padding:8px;">
+                </div>
+                <div style="margin-bottom:12px;">
+                    <label style="display:block; font-weight:600; margin-bottom:4px;">Branch Code (Unique) *</label>
+                    <input type="text" id="libCode" required placeholder="e.g. CML001" style="width:100%; padding:8px;">
+                </div>
+                <div style="margin-bottom:12px;">
+                    <label style="display:block; font-weight:600; margin-bottom:4px;">Address *</label>
+                    <textarea id="libAddress" required rows="2" style="width:100%; padding:8px;"></textarea>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:12px;">
+                    <div>
+                        <label style="display:block; font-weight:600; margin-bottom:4px;">City *</label>
+                        <input type="text" id="libCity" required style="width:100%; padding:8px;">
+                    </div>
+                    <div>
+                        <label style="display:block; font-weight:600; margin-bottom:4px;">District *</label>
+                        <input type="text" id="libDistrict" required style="width:100%; padding:8px;">
+                    </div>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:12px;">
+                    <div>
+                        <label style="display:block; font-weight:600; margin-bottom:4px;">State *</label>
+                        <input type="text" id="libState" required style="width:100%; padding:8px;">
+                    </div>
+                    <div>
+                        <label style="display:block; font-weight:600; margin-bottom:4px;">Pincode *</label>
+                        <input type="text" id="libPincode" required style="width:100%; padding:8px;">
+                    </div>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:12px;">
+                    <div>
+                        <label style="display:block; font-weight:600; margin-bottom:4px;">Email</label>
+                        <input type="email" id="libEmail" style="width:100%; padding:8px;">
+                    </div>
+                    <div>
+                        <label style="display:block; font-weight:600; margin-bottom:4px;">Phone</label>
+                        <input type="text" id="libPhone" style="width:100%; padding:8px;">
+                    </div>
+                </div>
+                <div style="margin-bottom:15px;">
+                    <label style="display:block; font-weight:600; margin-bottom:4px;">Status</label>
+                    <select id="libStatus" style="width:100%; padding:8px;">
+                        <option value="ACTIVE">ACTIVE</option>
+                        <option value="INACTIVE">INACTIVE</option>
+                    </select>
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:10px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('libraryModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Branch</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/js/app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            initApp();
+            const role = getUserRole();
+            if (role === 'ADMIN') {
+                document.getElementById('btnCreateLibrary').style.display = 'inline-block';
+            }
+            if (role === 'USER') {
+                document.querySelectorAll('.nav-admin-lib').forEach(el => el.style.display = 'none');
+            }
+            loadLibraries();
+        });
+
+        function loadLibraries() {
+            const query = document.getElementById('librarySearch').value.trim();
+            const role = getUserRole();
+            let url = (role === 'USER') ? '/api/libraries/active' : '/api/libraries';
+            if (query) {
+                url = `/api/libraries/search?query=${encodeURIComponent(query)}`;
+            }
+
+            fetchWithAuth(url)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.data) {
+                        renderLibraries(data.data.content || []);
+                    }
+                })
+                .catch(err => {
+                    document.getElementById('libraryGrid').innerHTML = `<div style="color:red; grid-column:1/-1;">Error loading libraries: ${err.message}</div>`;
+                });
+        }
+
+        function renderLibraries(libraries) {
+            const grid = document.getElementById('libraryGrid');
+            const role = getUserRole();
+
+            if (!libraries || libraries.length === 0) {
+                grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:40px;">No library branches found.</div>';
+                return;
+            }
+
+            grid.innerHTML = libraries.map(lib => `
+                <div class="library-card">
+                    <div>
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                            <h3>${escapeHtml(lib.name)}</h3>
+                            <span class="badge ${lib.status === 'ACTIVE' ? 'badge-success' : 'badge-danger'}">${lib.status}</span>
+                        </div>
+                        <span class="library-code">CODE: ${lib.code}</span>
+                        <p style="margin:5px 0; color:#64748b; font-size:0.9rem;">📍 ${escapeHtml(lib.address)}, ${escapeHtml(lib.city)}, ${escapeHtml(lib.state)} - ${lib.pincode}</p>
+                        <p style="margin:5px 0; color:#64748b; font-size:0.85rem;">📞 ${escapeHtml(lib.phone || 'N/A')} | ✉️ ${escapeHtml(lib.email || 'N/A')}</p>
+                        <div class="library-stats">
+                            <div><strong>${lib.totalBooks || 0}</strong> Total Books</div>
+                            <div><strong style="color:#16a34a;">${lib.availableBooks || 0}</strong> Available</div>
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:10px; margin-top:15px;">
+                        <a href="/library-details.html?id=${lib.id}" class="btn btn-sm btn-primary" style="text-decoration:none; text-align:center; flex:1;">View Details</a>
+                        ${role === 'ADMIN' ? `<button class="btn btn-sm btn-secondary" onclick="editLibrary(${lib.id})">Edit</button>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function handleSearchKey(e) {
+            if (e.key === 'Enter') loadLibraries();
+        }
+
+        function openCreateLibraryModal() {
+            document.getElementById('modalTitle').innerText = 'Add New Library Branch';
+            document.getElementById('libraryId').value = '';
+            document.getElementById('libraryForm').reset();
+            document.getElementById('libraryModal').style.display = 'flex';
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+
+        function editLibrary(id) {
+            fetchWithAuth(`/api/libraries/${id}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.data) {
+                        const lib = data.data;
+                        document.getElementById('modalTitle').innerText = 'Edit Library Branch';
+                        document.getElementById('libraryId').value = lib.id;
+                        document.getElementById('libName').value = lib.name;
+                        document.getElementById('libCode').value = lib.code;
+                        document.getElementById('libAddress').value = lib.address;
+                        document.getElementById('libCity').value = lib.city;
+                        document.getElementById('libDistrict').value = lib.district;
+                        document.getElementById('libState').value = lib.state;
+                        document.getElementById('libPincode').value = lib.pincode;
+                        document.getElementById('libEmail').value = lib.email || '';
+                        document.getElementById('libPhone').value = lib.phone || '';
+                        document.getElementById('libStatus').value = lib.status;
+                        document.getElementById('libraryModal').style.display = 'flex';
+                    }
+                });
+        }
+
+        function handleSaveLibrary(e) {
+            e.preventDefault();
+            const id = document.getElementById('libraryId').value;
+            const req = {
+                name: document.getElementById('libName').value,
+                code: document.getElementById('libCode').value,
+                address: document.getElementById('libAddress').value,
+                city: document.getElementById('libCity').value,
+                district: document.getElementById('libDistrict').value,
+                state: document.getElementById('libState').value,
+                pincode: document.getElementById('libPincode').value,
+                email: document.getElementById('libEmail').value,
+                phone: document.getElementById('libPhone').value,
+                status: document.getElementById('libStatus').value
+            };
+
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? `/api/libraries/${id}` : '/api/libraries';
+
+            fetchWithAuth(url, method, req)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Library branch saved successfully!');
+                        closeModal('libraryModal');
+                        loadLibraries();
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(err => alert('Save failed: ' + err.message));
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>

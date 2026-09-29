@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Book Licensing Management - Municipal Library</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <header>
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <h1>E-Book Licensing Management</h1>
+            <nav style="display: flex; gap: 15px; align-items: center;">
+                <a href="/index.html" style="color: white; text-decoration: none; font-weight: 500; padding: 6px 12px; border-radius: 4px; background: rgba(255,255,255,0.1);">Books</a>
+                <a href="/libraries.html" style="color: white; text-decoration: none; font-weight: 500; padding: 6px 12px; border-radius: 4px; background: rgba(255,255,255,0.1);">Libraries</a>
+                <a href="/licenses.html" style="color: white; text-decoration: none; font-weight: 600; padding: 6px 12px; border-radius: 4px; background: rgba(255,255,255,0.25);">Licenses</a>
+                <a href="/assets.html" style="color: white; text-decoration: none; font-weight: 500; padding: 6px 12px; border-radius: 4px; background: rgba(255,255,255,0.1);">Digital Assets</a>
+                <a href="/reports.html" style="color: white; text-decoration: none; font-weight: 500; padding: 6px 12px; border-radius: 4px; background: rgba(255,255,255,0.1);">Reports 📊</a>
+                <a href="/notifications.html" style="color: white; text-decoration: none; font-weight: 500; padding: 6px 12px; border-radius: 4px; background: rgba(255,255,255,0.1);">Notifications 🔔 <span class="notif-badge-counter" style="display:none; background:#dc3545; color:white; border-radius:10px; padding:2px 6px; font-size:12px;">0</span></a>
+            </nav>
+        </div>
+        <div class="nav-user">
+            <a href="/profile.html" style="color:white; text-decoration:none; margin-right:10px;">My Profile</a>
+            <span class="user-badge" id="userBadge">Admin</span>
+            <button class="btn-logout" onclick="logout()">Logout</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- License Metrics -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Total Licenses</h3>
+                <p id="statTotalLicenses">0</p>
+            </div>
+            <div class="stat-card success">
+                <h3>Active</h3>
+                <p id="statActiveLicenses">0</p>
+            </div>
+            <div class="stat-card warning">
+                <h3>Expiring Soon</h3>
+                <p id="statExpiringSoonLicenses">0</p>
+            </div>
+            <div class="stat-card accent">
+                <h3>Expired / Pending</h3>
+                <p id="statExpiredPendingLicenses">0</p>
+            </div>
+            <div class="stat-card success">
+                <h3>Total Cost</h3>
+                <p id="statTotalCost">₹0.00</p>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls-bar">
+            <div class="search-filter-group">
+                <input type="text" id="licenseSearch" placeholder="Search key, provider, book title..." style="width: 250px;">
+                <select id="statusFilter" onchange="loadLicenses()">
+                    <option value="">All Statuses</option>
+                    <option value="ACTIVE">ACTIVE</option>
+                    <option value="EXPIRING_SOON">EXPIRING_SOON</option>
+                    <option value="EXPIRED">EXPIRED</option>
+                    <option value="PENDING">PENDING</option>
+                    <option value="SUSPENDED">SUSPENDED</option>
+                    <option value="RENEWED">RENEWED</option>
+                    <option value="CANCELLED">CANCELLED</option>
+                </select>
+            </div>
+            <button class="btn btn-primary" onclick="openCreateLicenseModal()">+ Create New License</button>
+        </div>
+
+        <div id="alertContainer" class="alert" style="display: none;"></div>
+
+        <!-- License Table -->
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Book Title</th>
+                        <th>License Key</th>
+                        <th>Provider</th>
+                        <th>Type</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                        <th>Status</th>
+                        <th>Seats</th>
+                        <th>Price</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="licensesTableBody">
+                    <tr><td colspan="10" style="text-align:center;">Loading licenses...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- License Create/Edit Modal -->
+    <div id="licenseModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="licenseModalTitle">Create License</h2>
+                <button class="close-btn" onclick="closeModal('licenseModal')">&times;</button>
+            </div>
+            <form id="licenseForm">
+                <input type="hidden" id="licenseId">
+                <div class="form-group">
+                    <label>Target Book ID *</label>
+                    <input type="number" id="licenseBookId" required>
+                </div>
+                <div class="form-group">
+                    <label>License Key *</label>
+                    <input type="text" id="licenseKey" placeholder="LIC-2026-0001" required>
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <div class="form-group" style="flex: 1;">
+                        <label>License Type *</label>
+                        <select id="licenseType" required onchange="handleTypeChange()">
+                            <option value="MULTI_USER">MULTI_USER</option>
+                            <option value="SINGLE_USER">SINGLE_USER</option>
+                            <option value="UNLIMITED">UNLIMITED</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Max User Seats *</label>
+                        <input type="number" id="maxUsers" value="10" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Provider / Publisher *</label>
+                    <input type="text" id="provider" placeholder="Pearson Educational" required>
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <div class="form-group" style="flex: 1;">
+                        <label>Purchase Date *</label>
+                        <input type="date" id="purchaseDate" required>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Start Date *</label>
+                        <input type="date" id="startDate" required>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>End Date *</label>
+                        <input type="date" id="endDate" required>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <div class="form-group" style="flex: 1;">
+                        <label>Price *</label>
+                        <input type="number" step="0.01" id="price" value="5000.00" required>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Currency</label>
+                        <input type="text" id="currency" value="INR" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>License Terms & Notes</label>
+                    <textarea id="terms" rows="3"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Save License</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Renewal Modal -->
+    <div id="renewModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Renew E-Book License</h2>
+                <button class="close-btn" onclick="closeModal('renewModal')">&times;</button>
+            </div>
+            <form id="renewForm">
+                <input type="hidden" id="renewLicenseId">
+                <div class="form-group">
+                    <label>Renewal Start Date *</label>
+                    <input type="date" id="renewStartDate" required>
+                </div>
+                <div class="form-group">
+                    <label>Renewal End Date *</label>
+                    <input type="date" id="renewEndDate" required>
+                </div>
+                <div class="form-group">
+                    <label>Renewal Price (₹) *</label>
+                    <input type="number" step="0.01" id="renewPrice" required>
+                </div>
+                <div class="form-group">
+                    <label>New License Key (Optional)</label>
+                    <input type="text" id="renewLicenseKey" placeholder="Auto-generated if empty">
+                </div>
+                <div class="form-group">
+                    <label>Renewal Terms</label>
+                    <textarea id="renewTerms" rows="2"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Process Renewal</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Suspend Modal -->
+    <div id="suspendModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Suspend License</h2>
+                <button class="close-btn" onclick="closeModal('suspendModal')">&times;</button>
+            </div>
+            <form id="suspendForm">
+                <input type="hidden" id="suspendLicenseId">
+                <div class="form-group">
+                    <label>Reason for Suspension *</label>
+                    <textarea id="suspendReason" rows="3" required placeholder="License agreement audit pending..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-danger" style="width: 100%;">Suspend License</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- License History Modal -->
+    <div id="historyModal" class="modal">
+        <div class="modal-content" style="max-width: 650px;">
+            <div class="modal-header">
+                <h2>Book License History</h2>
+                <button class="close-btn" onclick="closeModal('historyModal')">&times;</button>
+            </div>
+            <div id="historyList">Loading history...</div>
+        </div>
+    </div>
+
+    <script src="/js/app.js"></script>
+    <script>
+        checkAuth(['ADMIN', 'LIBRARIAN']);
+        const currentRole = getUserRole();
+        document.getElementById('userBadge').innerText = `${getUserName()} (${currentRole})`;
+
+        async function loadStats() {
+            try {
+                const res = await apiFetch('/dashboard/stats');
+                document.getElementById('statTotalLicenses').innerText = res.data.totalLicenses;
+                document.getElementById('statActiveLicenses').innerText = res.data.activeLicenses;
+                document.getElementById('statExpiringSoonLicenses').innerText = res.data.expiringSoonLicenses;
+                document.getElementById('statExpiredPendingLicenses').innerText = res.data.expiredLicenses + res.data.pendingLicenses;
+                document.getElementById('statTotalCost').innerText = `₹${parseFloat(res.data.totalLicenseCost || 0).toLocaleString('en-IN', {minimumFractionDigits:2})}`;
+            } catch (err) {
+                showAlert('alertContainer', err.message);
+            }
+        }
+
+        async function loadLicenses() {
+            const search = document.getElementById('licenseSearch').value;
+            const status = document.getElementById('statusFilter').value;
+            let endpoint = '/licenses';
+            if (search) endpoint = `/licenses/search?query=${encodeURIComponent(search)}`;
+            else if (status) endpoint = `/licenses/filter?status=${encodeURIComponent(status)}`;
+
+            try {
+                const res = await apiFetch(endpoint);
+                const tbody = document.getElementById('licensesTableBody');
+                tbody.innerHTML = '';
+
+                if (!res.data || res.data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;">No licenses found.</td></tr>';
+                    return;
+                }
+
+                res.data.forEach(lic => {
+                    const tr = document.createElement('tr');
+                    const badgeClass = lic.status.toLowerCase().replace('_', '-');
+                    
+                    tr.innerHTML = `
+                        <td><strong>${lic.bookTitle}</strong> (ID: ${lic.bookId})</td>
+                        <td><code>${lic.licenseKey}</code></td>
+                        <td>${lic.provider}</td>
+                        <td><span class="badge badge-active">${lic.licenseType}</span></td>
+                        <td>${lic.startDate}</td>
+                        <td>${lic.endDate}</td>
+                        <td><span class="badge badge-${badgeClass}">${lic.status}</span></td>
+                        <td>${lic.currentUsers} / ${lic.maxUsers}</td>
+                        <td>₹${parseFloat(lic.price).toFixed(2)}</td>
+                        <td>
+                            <button class="btn btn-secondary btn-sm" onclick="viewHistory(${lic.bookId})">History</button>
+                            <button class="btn btn-primary btn-sm" onclick="openRenewModal(${lic.id}, '${lic.endDate}', ${lic.price})">Renew</button>
+                            ${currentRole === 'ADMIN' && lic.status !== 'SUSPENDED' && lic.status !== 'CANCELLED' ? `<button class="btn btn-danger btn-sm" onclick="openSuspendModal(${lic.id})">Suspend</button>` : ''}
+                            ${currentRole === 'ADMIN' && lic.status !== 'CANCELLED' ? `<button class="btn btn-danger btn-sm" onclick="cancelLicense(${lic.id})">Cancel</button>` : ''}
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (err) {
+                showAlert('alertContainer', err.message);
+            }
+        }
+
+        function handleTypeChange() {
+            const type = document.getElementById('licenseType').value;
+            const maxUsersInput = document.getElementById('maxUsers');
+            if (type === 'SINGLE_USER') {
+                maxUsersInput.value = 1;
+                maxUsersInput.readOnly = true;
+            } else if (type === 'UNLIMITED') {
+                maxUsersInput.value = 9999;
+                maxUsersInput.readOnly = true;
+            } else {
+                maxUsersInput.readOnly = false;
+                if (parseInt(maxUsersInput.value) <= 1) maxUsersInput.value = 10;
+            }
+        }
+
+        function openCreateLicenseModal() {
+            document.getElementById('licenseId').value = '';
+            document.getElementById('licenseForm').reset();
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('purchaseDate').value = today;
+            document.getElementById('startDate').value = today;
+            
+            const nextYear = new Date();
+            nextYear.setFullYear(nextYear.getFullYear() + 1);
+            document.getElementById('endDate').value = nextYear.toISOString().split('T')[0];
+            
+            document.getElementById('licenseModalTitle').innerText = 'Create License';
+            document.getElementById('licenseModal').style.display = 'flex';
+        }
+
+        document.getElementById('licenseForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('licenseId').value;
+            const payload = {
+                bookId: parseInt(document.getElementById('licenseBookId').value),
+                licenseKey: document.getElementById('licenseKey').value,
+                licenseType: document.getElementById('licenseType').value,
+                provider: document.getElementById('provider').value,
+                purchaseDate: document.getElementById('purchaseDate').value,
+                startDate: document.getElementById('startDate').value,
+                endDate: document.getElementById('endDate').value,
+                maxUsers: parseInt(document.getElementById('maxUsers').value),
+                price: parseFloat(document.getElementById('price').value),
+                currency: document.getElementById('currency').value,
+                terms: document.getElementById('terms').value
+            };
+
+            try {
+                if (id) await apiFetch(`/licenses/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+                else await apiFetch('/licenses', { method: 'POST', body: JSON.stringify(payload) });
+                closeModal('licenseModal');
+                loadLicenses();
+                loadStats();
+                showAlert('alertContainer', 'License saved successfully!', 'success');
+            } catch (err) { alert(err.message); }
+        });
+
+        function openRenewModal(id, currentEndDate, price) {
+            document.getElementById('renewLicenseId').value = id;
+            document.getElementById('renewStartDate').value = currentEndDate;
+            
+            const d = new Date(currentEndDate);
+            d.setFullYear(d.getFullYear() + 1);
+            document.getElementById('renewEndDate').value = d.toISOString().split('T')[0];
+            document.getElementById('renewPrice').value = price;
+            document.getElementById('renewModal').style.display = 'flex';
+        }
+
+        document.getElementById('renewForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('renewLicenseId').value;
+            const payload = {
+                startDate: document.getElementById('renewStartDate').value,
+                endDate: document.getElementById('renewEndDate').value,
+                price: parseFloat(document.getElementById('renewPrice').value),
+                licenseKey: document.getElementById('renewLicenseKey').value,
+                terms: document.getElementById('renewTerms').value
+            };
+
+            try {
+                await apiFetch(`/licenses/${id}/renew`, { method: 'POST', body: JSON.stringify(payload) });
+                closeModal('renewModal');
+                loadLicenses();
+                loadStats();
+                showAlert('alertContainer', 'License renewed successfully!', 'success');
+            } catch (err) { alert(err.message); }
+        });
+
+        function openSuspendModal(id) {
+            document.getElementById('suspendLicenseId').value = id;
+            document.getElementById('suspendModal').style.display = 'flex';
+        }
+
+        document.getElementById('suspendForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('suspendLicenseId').value;
+            const payload = { reason: document.getElementById('suspendReason').value };
+
+            try {
+                await apiFetch(`/licenses/${id}/suspend`, { method: 'POST', body: JSON.stringify(payload) });
+                closeModal('suspendModal');
+                loadLicenses();
+                loadStats();
+                showAlert('alertContainer', 'License suspended.', 'success');
+            } catch (err) { alert(err.message); }
+        });
+
+        async function cancelLicense(id) {
+            if (!confirm('Are you sure you want to cancel this license? Cancelled licenses cannot be reactivated.')) return;
+            try {
+                await apiFetch(`/licenses/${id}/cancel`, { method: 'POST' });
+                loadLicenses();
+                loadStats();
+                showAlert('alertContainer', 'License cancelled.', 'success');
+            } catch (err) { showAlert('alertContainer', err.message); }
+        }
+
+        async function viewHistory(bookId) {
+            try {
+                const res = await apiFetch(`/licenses/book/${bookId}/history`);
+                const list = document.getElementById('historyList');
+                list.innerHTML = '';
+                if (!res.data || res.data.length === 0) {
+                    list.innerHTML = '<p>No license history records found.</p>';
+                } else {
+                    res.data.forEach(lic => {
+                        const div = document.createElement('div');
+                        div.style.padding = '0.85rem';
+                        div.style.borderBottom = '1px solid #e2e8f0';
+                        div.innerHTML = `
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <strong>License Key: ${lic.licenseKey}</strong>
+                                <span class="badge badge-${lic.status.toLowerCase().replace('_', '-')}">${lic.status}</span>
+                            </div>
+                            <p style="font-size:0.85rem; color:#475569; margin-top:0.3rem;">
+                                Provider: ${lic.provider} | Type: ${lic.licenseType} | Cost: ₹${parseFloat(lic.price).toFixed(2)}<br>
+                                Period: ${lic.startDate} to ${lic.endDate} ${lic.previousLicenseId ? `(Renewed from #${lic.previousLicenseId})` : ''}
+                            </p>
+                        `;
+                        list.appendChild(div);
+                    });
+                }
+                document.getElementById('historyModal').style.display = 'flex';
+            } catch (err) { showAlert('alertContainer', err.message); }
+        }
+
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+        document.getElementById('licenseSearch').addEventListener('input', () => loadLicenses());
+
+        loadStats();
+        loadLicenses();
+    </script>
+</body>
+</html>

@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Asset Management - Municipal Library</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .version-badge {
+            background-color: #e2e8f0;
+            color: #334155;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .checksum-code {
+            font-family: monospace;
+            font-size: 0.75rem;
+            background: #f1f5f9;
+            padding: 2px 4px;
+            border-radius: 4px;
+            cursor: pointer;
+            word-break: break-all;
+        }
+        .nav-links {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 6px 12px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .nav-links a:hover, .nav-links a.active {
+            background: rgba(255, 255, 255, 0.25);
+        }
+        .integrity-box {
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+        .integrity-box.valid {
+            background-color: #dcfce7;
+            border: 1px solid #86efac;
+            color: #166534;
+        }
+        .integrity-box.invalid {
+            background-color: #fee2e2;
+            border: 1px solid #fca5a5;
+            color: #991b1b;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <h1>Digital Asset Management</h1>
+            <nav class="nav-links">
+                <a href="/index.html">Books</a>
+                <a href="/libraries.html">Libraries</a>
+                <a href="/licenses.html">Licenses</a>
+                <a href="/assets.html" class="active">Digital Assets</a>
+                <a href="/reports.html">Reports 📊</a>
+                <a href="/notifications.html">Notifications 🔔 <span class="notif-badge-counter" style="display:none; background:#dc3545; color:white; border-radius:10px; padding:2px 6px; font-size:12px;">0</span></a>
+            </nav>
+        </div>
+        <div class="nav-user">
+            <a href="/profile.html" style="color:white; text-decoration:none; margin-right:10px;">My Profile</a>
+            <span class="user-badge" id="userBadge">Admin</span>
+            <button class="btn-logout" onclick="logout()">Logout</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- DAM Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Total Assets</h3>
+                <p id="statTotalAssets">0</p>
+            </div>
+            <div class="stat-card success">
+                <h3>Active Assets</h3>
+                <p id="statActiveAssets">0</p>
+            </div>
+            <div class="stat-card warning">
+                <h3>Archived Assets</h3>
+                <p id="statArchivedAssets">0</p>
+            </div>
+            <div class="stat-card accent">
+                <h3>Storage Used</h3>
+                <p id="statStorageUsed">0 MB</p>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls-bar">
+            <div class="search-filter-group">
+                <input type="text" id="assetSearch" placeholder="Search file, title, checksum..." style="width: 250px;" onkeyup="handleSearchKey(event)">
+                <select id="typeFilter" onchange="loadAssets()">
+                    <option value="">All Types</option>
+                    <option value="EBOOK">E-Book</option>
+                    <option value="COVER_IMAGE">Cover Image</option>
+                    <option value="PREVIEW">Preview</option>
+                </select>
+                <select id="statusFilter" onchange="loadAssets()">
+                    <option value="">All Statuses</option>
+                    <option value="ACTIVE">ACTIVE</option>
+                    <option value="ARCHIVED">ARCHIVED</option>
+                    <option value="REPLACED">REPLACED</option>
+                    <option value="DELETED">DELETED</option>
+                </select>
+                <button class="btn btn-secondary" onclick="loadAssets()">Search</button>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-primary" onclick="openUploadModal()">+ Upload Asset</button>
+                <button class="btn btn-secondary" onclick="openReplaceModal()">Replace E-Book</button>
+            </div>
+        </div>
+
+        <!-- Data Table -->
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Book Title</th>
+                        <th>Type</th>
+                        <th>Filename</th>
+                        <th>Version</th>
+                        <th>Size</th>
+                        <th>SHA-256 Checksum</th>
+                        <th>Status</th>
+                        <th>Uploaded By</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="assetTableBody">
+                    <tr><td colspan="10" style="text-align:center;">Loading digital assets...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Upload Asset Modal -->
+    <div id="uploadModal" class="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center;">
+        <div class="modal-content" style="background:white; padding:25px; border-radius:8px; width:450px;">
+            <h2 style="margin-top:0;">Upload Digital Asset</h2>
+            <form id="uploadForm" onsubmit="handleUploadAsset(event)">
+                <div style="margin-bottom:15px;">
+                    <label style="display:block; font-weight:600; margin-bottom:5px;">Select Book *</label>
+                    <select id="uploadBookSelect" required style="width:100%; padding:8px;">
+                        <option value="">Select a book...</option>
+                    </select>
+                </div>
+                <div style="margin-bottom:15px;">
+                    <label style="display:block; font-weight:600; margin-bottom:5px;">Asset Type *</label>
+                    <select id="uploadAssetType" required style="width:100%; padding:8px;">
+                        <option value="EBOOK">E-Book File (.pdf, .epub)</option>
+                        <option value="COVER_IMAGE">Cover Image (.jpg, .png, .webp)</option>
+                        <option value="PREVIEW">Preview Sample (.pdf, .epub, .jpg)</option>
+                    </select>
+                </div>
+                <div style="margin-bottom:15px;">
+                    <label style="display:block; font-weight:600; margin-bottom:5px;">File *</label>
+                    <input type="file" id="uploadFileInput" required style="width:100%;">
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('uploadModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Upload</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Replace E-Book Modal -->
+    <div id="replaceModal" class="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center;">
+        <div class="modal-content" style="background:white; padding:25px; border-radius:8px; width:450px;">
+            <h2 style="margin-top:0;">Replace E-Book Asset</h2>
+            <p style="font-size:0.85rem; color:#64748b;">Replacing will archive/replace the current active E-Book asset and increment the version (e.g. v1 &rarr; v2).</p>
+            <form id="replaceForm" onsubmit="handleReplaceEbook(event)">
+                <div style="margin-bottom:15px;">
+                    <label style="display:block; font-weight:600; margin-bottom:5px;">Select Book *</label>
+                    <select id="replaceBookSelect" required style="width:100%; padding:8px;">
+                        <option value="">Select a book...</option>
+                    </select>
+                </div>
+                <div style="margin-bottom:15px;">
+                    <label style="display:block; font-weight:600; margin-bottom:5px;">Replacement File (.pdf, .epub) *</label>
+                    <input type="file" id="replaceFileInput" required style="width:100%;">
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('replaceModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Upload Replacement</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Integrity Verification Modal -->
+    <div id="integrityModal" class="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center;">
+        <div class="modal-content" style="background:white; padding:25px; border-radius:8px; width:500px;">
+            <h2 style="margin-top:0;">File Integrity Verification</h2>
+            <div id="integrityContent">
+                <p>Verifying SHA-256 checksum against physical storage...</p>
+            </div>
+            <div style="display:flex; justify-content:flex-end; margin-top:20px;">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('integrityModal')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            initApp();
+            loadStats();
+            loadAssets();
+            loadBookDropdowns();
+        });
+
+        function loadStats() {
+            fetchWithAuth('/api/dashboard/stats')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.data) {
+                        const s = data.data;
+                        document.getElementById('statTotalAssets').innerText = s.totalAssets || 0;
+                        document.getElementById('statActiveAssets').innerText = s.activeAssets || 0;
+                        document.getElementById('statArchivedAssets').innerText = s.archivedAssets || 0;
+                        document.getElementById('statStorageUsed').innerText = formatBytes(s.totalStorageUsedBytes || 0);
+                    }
+                })
+                .catch(err => console.error('Failed to load stats:', err));
+        }
+
+        function loadAssets() {
+            const query = document.getElementById('assetSearch').value.trim();
+            const type = document.getElementById('typeFilter').value;
+            const status = document.getElementById('statusFilter').value;
+
+            let url = '/api/assets';
+            if (query) {
+                url = `/api/assets/search?q=${encodeURIComponent(query)}`;
+            } else if (type || status) {
+                url = `/api/assets?assetType=${encodeURIComponent(type)}&status=${encodeURIComponent(status)}`;
+            }
+
+            fetchWithAuth(url)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.data) {
+                        renderAssets(data.data.content || []);
+                    }
+                })
+                .catch(err => {
+                    document.getElementById('assetTableBody').innerHTML = `<tr><td colspan="10" style="text-align:center; color:red;">Failed to load assets: ${err.message}</td></tr>`;
+                });
+        }
+
+        function renderAssets(assets) {
+            const tbody = document.getElementById('assetTableBody');
+            if (!assets || assets.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;">No digital assets found.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = assets.map(a => {
+                const checksumShort = a.checksum ? a.checksum.substring(0, 10) + '...' : 'N/A';
+                const statusClass = a.status === 'ACTIVE' ? 'badge-success' : (a.status === 'ARCHIVED' ? 'badge-warning' : 'badge-danger');
+                
+                return `
+                    <tr>
+                        <td>${a.id}</td>
+                        <td><strong>${escapeHtml(a.bookTitle || ('Book #' + a.bookId))}</strong></td>
+                        <td><span class="badge badge-info">${a.assetType}</span></td>
+                        <td>${escapeHtml(a.originalFileName)}</td>
+                        <td><span class="version-badge">v${a.version}</span></td>
+                        <td>${formatBytes(a.fileSize)}</td>
+                        <td><span class="checksum-code" title="${a.checksum}" onclick="alert('SHA-256: ${a.checksum}')">${checksumShort}</span></td>
+                        <td><span class="badge ${statusClass}">${a.status}</span></td>
+                        <td>${escapeHtml(a.uploadedBy || 'system')}</td>
+                        <td>
+                            <button class="btn btn-sm btn-secondary" onclick="downloadAsset(${a.id})">Download</button>
+                            <button class="btn btn-sm btn-info" onclick="verifyIntegrity(${a.id})">Verify</button>
+                            ${a.status === 'ACTIVE' ? `<button class="btn btn-sm btn-warning" onclick="archiveAsset(${a.id})">Archive</button>` : ''}
+                            ${a.status === 'ARCHIVED' ? `<button class="btn btn-sm btn-success" onclick="restoreAsset(${a.id})">Restore</button>` : ''}
+                            ${a.status !== 'DELETED' ? `<button class="btn btn-sm btn-danger" onclick="deleteAsset(${a.id})">Delete</button>` : ''}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function loadBookDropdowns() {
+            fetchWithAuth('/api/books?size=100')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.data && data.data.content) {
+                        const books = data.data.content;
+                        const options = books.map(b => `<option value="${b.id}">${escapeHtml(b.title)} (ID: ${b.id})</option>`).join('');
+                        document.getElementById('uploadBookSelect').innerHTML = '<option value="">Select a book...</option>' + options;
+                        document.getElementById('replaceBookSelect').innerHTML = '<option value="">Select a book...</option>' + options;
+                    }
+                });
+        }
+
+        function handleSearchKey(e) {
+            if (e.key === 'Enter') {
+                loadAssets();
+            }
+        }
+
+        function openUploadModal() {
+            document.getElementById('uploadModal').style.display = 'flex';
+        }
+
+        function openReplaceModal() {
+            document.getElementById('replaceModal').style.display = 'flex';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        function handleUploadAsset(e) {
+            e.preventDefault();
+            const bookId = document.getElementById('uploadBookSelect').value;
+            const type = document.getElementById('uploadAssetType').value;
+            const fileInput = document.getElementById('uploadFileInput');
+
+            if (!fileInput.files || fileInput.files.length === 0) {
+                alert('Please select a file to upload');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('bookId', bookId);
+            formData.append('type', type);
+            formData.append('file', fileInput.files[0]);
+
+            fetchWithAuthMultipart('/api/assets/upload', 'POST', formData)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Asset uploaded successfully!');
+                        closeModal('uploadModal');
+                        loadStats();
+                        loadAssets();
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(err => alert('Upload failed: ' + err.message));
+        }
+
+        function handleReplaceEbook(e) {
+            e.preventDefault();
+            const bookId = document.getElementById('replaceBookSelect').value;
+            const fileInput = document.getElementById('replaceFileInput');
+
+            if (!fileInput.files || fileInput.files.length === 0) {
+                alert('Please select a replacement file');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            fetchWithAuthMultipart(`/api/assets/replace-ebook/${bookId}`, 'POST', formData)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('E-Book asset replaced successfully! Version updated.');
+                        closeModal('replaceModal');
+                        loadStats();
+                        loadAssets();
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(err => alert('Replace failed: ' + err.message));
+        }
+
+        function downloadAsset(assetId) {
+            const token = localStorage.getItem('token');
+            fetch(`/api/assets/${assetId}/download`, {
+                headers: { 'Authorization': 'Bearer ' + token }
+            })
+            .then(res => {
+                if (!res.ok) {
+                    return res.json().then(err => { throw new Error(err.message || 'Download failed'); });
+                }
+                const disposition = res.headers.get('Content-Disposition');
+                let filename = 'downloaded_asset';
+                if (disposition && disposition.indexOf('filename=') !== -1) {
+                    filename = disposition.split('filename=')[1].replace(/"/g, '');
+                }
+                return res.blob().then(blob => ({ blob, filename }));
+            })
+            .then(({ blob, filename }) => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            })
+            .catch(err => alert('Download error: ' + err.message));
+        }
+
+        function verifyIntegrity(assetId) {
+            document.getElementById('integrityContent').innerHTML = '<p>Computing SHA-256 checksum and checking physical file...</p>';
+            document.getElementById('integrityModal').style.display = 'flex';
+
+            fetchWithAuth(`/api/assets/${assetId}/integrity`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.data) {
+                        const info = data.data;
+                        const boxClass = info.valid ? 'valid' : 'invalid';
+                        document.getElementById('integrityContent').innerHTML = `
+                            <div class="integrity-box ${boxClass}">
+                                <h4 style="margin-top:0;">${info.valid ? '✓ INTEGRITY VERIFIED' : '⚠ INTEGRITY MISMATCH'}</h4>
+                                <p><strong>DB Checksum:</strong> <span class="checksum-code">${info.expectedChecksum}</span></p>
+                                <p><strong>Actual Checksum:</strong> <span class="checksum-code">${info.actualChecksum}</span></p>
+                                <p style="margin-bottom:0;"><strong>Details:</strong> ${escapeHtml(info.message)}</p>
+                            </div>
+                        `;
+                    } else {
+                        document.getElementById('integrityContent').innerHTML = `<p style="color:red;">Error: ${data.message}</p>`;
+                    }
+                })
+                .catch(err => {
+                    document.getElementById('integrityContent').innerHTML = `<p style="color:red;">Verification failed: ${err.message}</p>`;
+                });
+        }
+
+        function archiveAsset(assetId) {
+            if (confirm('Are you sure you want to archive this asset?')) {
+                fetchWithAuth(`/api/assets/${assetId}/archive`, 'PUT')
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            loadStats();
+                            loadAssets();
+                        } else {
+                            alert('Error: ' + data.message);
+                        }
+                    });
+            }
+        }
+
+        function restoreAsset(assetId) {
+            if (confirm('Restore this asset to ACTIVE status? (Existing active asset will be archived)')) {
+                fetchWithAuth(`/api/assets/${assetId}/restore`, 'PUT')
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            loadStats();
+                            loadAssets();
+                        } else {
+                            alert('Error: ' + data.message);
+                        }
+                    });
+            }
+        }
+
+        function deleteAsset(assetId) {
+            if (confirm('Are you sure you want to soft-delete this asset?')) {
+                fetchWithAuth(`/api/assets/${assetId}?permanent=false`, 'DELETE')
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            loadStats();
+                            loadAssets();
+                        } else {
+                            alert('Error: ' + data.message);
+                        }
+                    });
+            }
+        }
+
+        function formatBytes(bytes) {
+            if (!bytes || bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>

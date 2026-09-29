@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Municipal Library</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <header>
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <h1>Municipal Library Administration</h1>
+            <nav style="display: flex; gap: 15px; align-items: center;">
+                <a href="/index.html" style="color: white; text-decoration: none; font-weight: 600; padding: 6px 12px; border-radius: 4px; background: rgba(255,255,255,0.25);">Books</a>
+                <a href="/search.html" style="color: white; text-decoration: none; font-weight: 500; padding: 6px 12px; border-radius: 4px; background: rgba(255,255,255,0.1);">Search 🔍</a>
+                <a href="/libraries.html" style="color: white; text-decoration: none; font-weight: 500; padding: 6px 12px; border-radius: 4px; background: rgba(255,255,255,0.1);">Libraries</a>
+                <a href="/licenses.html" style="color: white; text-decoration: none; font-weight: 500; padding: 6px 12px; border-radius: 4px; background: rgba(255,255,255,0.1);">Licenses</a>
+                <a href="/assets.html" style="color: white; text-decoration: none; font-weight: 500; padding: 6px 12px; border-radius: 4px; background: rgba(255,255,255,0.1);">Digital Assets</a>
+                <a href="/reports.html" style="color: white; text-decoration: none; font-weight: 500; padding: 6px 12px; border-radius: 4px; background: rgba(255,255,255,0.1);">Reports 📊</a>
+                <a href="/notifications.html" style="color: white; text-decoration: none; font-weight: 500; padding: 6px 12px; border-radius: 4px; background: rgba(255,255,255,0.1);">Notifications 🔔 <span class="notif-badge-counter" style="display:none; background:#dc3545; color:white; border-radius:10px; padding:2px 6px; font-size:12px;">0</span></a>
+            </nav>
+        </div>
+        <div class="nav-user">
+            <a href="/profile.html" style="color:white; text-decoration:none; margin-right:10px;">My Profile</a>
+            <span class="user-badge" id="userBadge">Admin</span>
+            <button class="btn-logout" onclick="logout()">Logout</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Dashboard Summary Stats -->
+        <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));">
+            <div class="stat-card">
+                <h3>Total Libraries</h3>
+                <p id="statTotalLibraries">0</p>
+            </div>
+            <div class="stat-card success">
+                <h3>Total Books</h3>
+                <p id="statTotalBooks">0</p>
+            </div>
+            <div class="stat-card accent">
+                <h3>Active Users</h3>
+                <p id="statActiveUsers">0</p>
+            </div>
+            <div class="stat-card success">
+                <h3>Active Licenses</h3>
+                <p id="statActiveLicenses">0</p>
+            </div>
+            <div class="stat-card warning">
+                <h3>Expiring Soon</h3>
+                <p id="statExpiringSoonLicenses">0</p>
+            </div>
+            <div class="stat-card accent">
+                <h3>Digital Assets</h3>
+                <p id="statTotalAssets">0</p>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem;">
+            <button class="btn btn-primary" id="tabBooks" onclick="switchTab('books')">Book Management</button>
+            <button class="btn btn-secondary" id="tabUsers" onclick="switchTab('users')">User Management</button>
+            <button class="btn btn-secondary" onclick="window.location.href='/licenses.html'">Full License Manager 🔗</button>
+        </div>
+
+        <div id="alertContainer" class="alert" style="display: none;"></div>
+
+        <!-- Book Management Section -->
+        <div id="sectionBooks">
+            <div class="controls-bar">
+                <div class="search-filter-group">
+                    <input type="text" id="bookSearch" placeholder="Search title, author, ISBN..." style="width: 250px;">
+                    <select id="categoryFilter" onchange="loadBooks()">
+                        <option value="">All Categories</option>
+                        <option value="Tamil Literature">Tamil Literature</option>
+                        <option value="Computer Science">Computer Science</option>
+                        <option value="Technology">Technology</option>
+                        <option value="History">History</option>
+                        <option value="Science">Science</option>
+                        <option value="Education">Education</option>
+                        <option value="Engineering">Engineering</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary" onclick="openBookModal()">+ Add New Book</button>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Cover</th>
+                            <th>Title</th>
+                            <th>Author</th>
+                            <th>ISBN</th>
+                            <th>Category</th>
+                            <th>Lang</th>
+                            <th>Status</th>
+                            <th>File</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="booksTableBody">
+                        <tr><td colspan="9" style="text-align:center;">Loading books...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- User Management Section -->
+        <div id="sectionUsers" style="display: none;">
+            <div class="controls-bar">
+                <h2>User Management</h2>
+                <button class="btn btn-primary" onclick="openUserModal()">+ Create User</button>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Created At</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                        <tr><td colspan="6" style="text-align:center;">Loading users...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- License Management Section -->
+        <div id="sectionLicenses" style="display: none;">
+            <div class="controls-bar">
+                <h2>License Management</h2>
+                <button class="btn btn-primary" onclick="openLicenseModal()">+ Add License</button>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>License ID</th>
+                            <th>Book Title</th>
+                            <th>Start Date</th>
+                            <th>End Date</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="licensesTableBody">
+                        <tr><td colspan="6" style="text-align:center;">Loading licenses...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Book Modal -->
+    <div id="bookModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="bookModalTitle">Add New Book</h2>
+                <button class="close-btn" onclick="closeModal('bookModal')">&times;</button>
+            </div>
+            <form id="bookForm">
+                <input type="hidden" id="bookId">
+                <div class="form-group">
+                    <label>Book Title *</label>
+                    <input type="text" id="bookTitleInput" required>
+                </div>
+                <div class="form-group">
+                    <label>Author *</label>
+                    <input type="text" id="bookAuthorInput" required>
+                </div>
+                <div class="form-group">
+                    <label>ISBN *</label>
+                    <input type="text" id="bookIsbnInput" required>
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <div class="form-group" style="flex:1;">
+                        <label>Category *</label>
+                        <input type="text" id="bookCategoryInput" required>
+                    </div>
+                    <div class="form-group" style="flex:1;">
+                        <label>Language *</label>
+                        <input type="text" id="bookLanguageInput" value="English" required>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <div class="form-group" style="flex:1;">
+                        <label>Publisher</label>
+                        <input type="text" id="bookPublisherInput">
+                    </div>
+                    <div class="form-group" style="flex:1;">
+                        <label>Publication Year *</label>
+                        <input type="number" id="bookYearInput" value="2024" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Status *</label>
+                    <select id="bookStatusInput">
+                        <option value="AVAILABLE">AVAILABLE</option>
+                        <option value="UNAVAILABLE">UNAVAILABLE</option>
+                        <option value="ARCHIVED">ARCHIVED</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="bookDescInput" rows="3"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Save Book</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Upload E-Book Modal -->
+    <div id="uploadModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Upload E-Book File</h2>
+                <button class="close-btn" onclick="closeModal('uploadModal')">&times;</button>
+            </div>
+            <form id="uploadForm">
+                <input type="hidden" id="uploadBookId">
+                <div class="form-group">
+                    <label>Select PDF or EPUB File (Max 50MB) *</label>
+                    <input type="file" id="ebookFileInput" accept=".pdf,.epub" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Upload File</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- User Modal -->
+    <div id="userModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="userModalTitle">Create User</h2>
+                <button class="close-btn" onclick="closeModal('userModal')">&times;</button>
+            </div>
+            <form id="userForm">
+                <input type="hidden" id="userId">
+                <div class="form-group">
+                    <label>Full Name *</label>
+                    <input type="text" id="userNameInput" required>
+                </div>
+                <div class="form-group">
+                    <label>Email Address *</label>
+                    <input type="email" id="userEmailInput" required>
+                </div>
+                <div class="form-group">
+                    <label>Password (Leave blank if keeping existing)</label>
+                    <input type="password" id="userPasswordInput">
+                </div>
+                <div class="form-group">
+                    <label>Role *</label>
+                    <select id="userRoleInput">
+                        <option value="USER">USER</option>
+                        <option value="LIBRARIAN">LIBRARIAN</option>
+                        <option value="ADMIN">ADMIN</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Save User</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- License Modal -->
+    <div id="licenseModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="licenseModalTitle">Add License</h2>
+                <button class="close-btn" onclick="closeModal('licenseModal')">&times;</button>
+            </div>
+            <form id="licenseForm">
+                <input type="hidden" id="licenseId">
+                <div class="form-group">
+                    <label>Target Book ID *</label>
+                    <input type="number" id="licenseBookIdInput" required>
+                </div>
+                <div class="form-group">
+                    <label>Start Date *</label>
+                    <input type="date" id="licenseStartDateInput" required>
+                </div>
+                <div class="form-group">
+                    <label>End Date *</label>
+                    <input type="date" id="licenseEndDateInput" required>
+                </div>
+                <div class="form-group">
+                    <label>Status *</label>
+                    <select id="licenseStatusInput">
+                        <option value="ACTIVE">ACTIVE</option>
+                        <option value="EXPIRED">EXPIRED</option>
+                        <option value="PENDING">PENDING</option>
+                        <option value="REVOKED">REVOKED</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Save License</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="/js/app.js"></script>
+    <script>
+        checkAuth(['ADMIN']);
+        document.getElementById('userBadge').innerText = `${getUserName()} (${getUserRole()})`;
+
+        let activeTab = 'books';
+
+        async function loadStats() {
+            try {
+                const res = await apiFetch('/dashboard/stats');
+                if (res.data) {
+                    if (document.getElementById('statTotalLibraries')) document.getElementById('statTotalLibraries').innerText = res.data.totalLibraries || 0;
+                    if (document.getElementById('statTotalBooks')) document.getElementById('statTotalBooks').innerText = res.data.totalBooks || 0;
+                    if (document.getElementById('statActiveUsers')) document.getElementById('statActiveUsers').innerText = res.data.activeUsers || 0;
+                    if (document.getElementById('statActiveLicenses')) document.getElementById('statActiveLicenses').innerText = res.data.activeLicenses || 0;
+                    if (document.getElementById('statExpiringSoonLicenses')) document.getElementById('statExpiringSoonLicenses').innerText = res.data.expiringSoonLicenses || 0;
+                    if (document.getElementById('statTotalAssets')) document.getElementById('statTotalAssets').innerText = res.data.totalAssets || 0;
+                }
+            } catch (err) {
+                showAlert('alertContainer', err.message);
+            }
+        }
+
+        async function loadBooks() {
+            const search = document.getElementById('bookSearch').value;
+            const category = document.getElementById('categoryFilter').value;
+            let endpoint = '/books?page=0&size=50&sortBy=id&sortDir=desc';
+            if (search) endpoint = `/books/search?query=${encodeURIComponent(search)}&page=0&size=50`;
+            else if (category) endpoint = `/books/filter?category=${encodeURIComponent(category)}&page=0&size=50`;
+
+            try {
+                const res = await apiFetch(endpoint);
+                const tbody = document.getElementById('booksTableBody');
+                tbody.innerHTML = '';
+                if (!res.data.content || res.data.content.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;">No books found.</td></tr>';
+                    return;
+                }
+
+                res.data.content.forEach(book => {
+                    const tr = document.createElement('tr');
+                    const coverUrl = book.coverImage ? `/api/books/cover/${book.coverImage.split('/').pop()}` : '';
+                    const coverHtml = coverUrl ? `<img src="${coverUrl}" style="width:35px;height:45px;object-fit:cover;border-radius:4px;">` : '📖';
+                    
+                    tr.innerHTML = `
+                        <td>${coverHtml}</td>
+                        <td><strong>${book.title}</strong></td>
+                        <td>${book.author}</td>
+                        <td><code>${book.isbn}</code></td>
+                        <td>${book.category}</td>
+                        <td>${book.language}</td>
+                        <td><span class="badge badge-${book.status.toLowerCase()}">${book.status}</span></td>
+                        <td>${book.fileName ? `📄 ${book.fileName}` : '<span style="color:#94a3b8;">None</span>'}</td>
+                        <td>
+                            <button class="btn btn-secondary btn-sm" onclick="openUploadModal(${book.id})">Upload</button>
+                            <button class="btn btn-primary btn-sm" onclick="editBook(${book.id})">Edit</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteBook(${book.id})">Delete</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (err) {
+                showAlert('alertContainer', err.message);
+            }
+        }
+
+        async function loadUsers() {
+            try {
+                const res = await apiFetch('/users');
+                const tbody = document.getElementById('usersTableBody');
+                tbody.innerHTML = '';
+                res.data.forEach(user => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${user.id}</td>
+                        <td><strong>${user.name}</strong></td>
+                        <td>${user.email}</td>
+                        <td><span class="badge ${user.role === 'ADMIN' ? 'badge-expired' : 'badge-active'}">${user.role}</span></td>
+                        <td>${new Date(user.createdAt).toLocaleDateString()}</td>
+                        <td>
+                            <button class="btn btn-primary btn-sm" onclick="editUser(${user.id})">Edit</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteUser(${user.id})">Delete</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (err) {
+                showAlert('alertContainer', err.message);
+            }
+        }
+
+        async function loadLicenses() {
+            try {
+                const res = await apiFetch('/licenses');
+                const tbody = document.getElementById('licensesTableBody');
+                tbody.innerHTML = '';
+                res.data.forEach(lic => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>#${lic.id}</td>
+                        <td><strong>${lic.bookTitle}</strong> (ID: ${lic.bookId})</td>
+                        <td>${lic.licenseStartDate}</td>
+                        <td>${lic.licenseEndDate}</td>
+                        <td><span class="badge badge-${lic.status.toLowerCase()}">${lic.status}</span></td>
+                        <td>
+                            <button class="btn btn-danger btn-sm" onclick="deleteLicense(${lic.id})">Delete</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (err) {
+                showAlert('alertContainer', err.message);
+            }
+        }
+
+        function switchTab(tab) {
+            activeTab = tab;
+            document.getElementById('sectionBooks').style.display = tab === 'books' ? 'block' : 'none';
+            document.getElementById('sectionUsers').style.display = tab === 'users' ? 'block' : 'none';
+            document.getElementById('sectionLicenses').style.display = tab === 'licenses' ? 'block' : 'none';
+
+            document.getElementById('tabBooks').className = tab === 'books' ? 'btn btn-primary' : 'btn btn-secondary';
+            document.getElementById('tabUsers').className = tab === 'users' ? 'btn btn-primary' : 'btn btn-secondary';
+            document.getElementById('tabLicenses').className = tab === 'licenses' ? 'btn btn-primary' : 'btn btn-secondary';
+
+            if (tab === 'books') loadBooks();
+            if (tab === 'users') loadUsers();
+            if (tab === 'licenses') loadLicenses();
+        }
+
+        document.getElementById('bookSearch').addEventListener('input', () => loadBooks());
+
+        // Book Actions
+        function openBookModal() {
+            document.getElementById('bookId').value = '';
+            document.getElementById('bookForm').reset();
+            document.getElementById('bookModalTitle').innerText = 'Add New Book';
+            document.getElementById('bookModal').style.display = 'flex';
+        }
+
+        async function editBook(id) {
+            try {
+                const res = await apiFetch(`/books/${id}`);
+                const b = res.data;
+                document.getElementById('bookId').value = b.id;
+                document.getElementById('bookTitleInput').value = b.title;
+                document.getElementById('bookAuthorInput').value = b.author;
+                document.getElementById('bookIsbnInput').value = b.isbn;
+                document.getElementById('bookCategoryInput').value = b.category;
+                document.getElementById('bookLanguageInput').value = b.language;
+                document.getElementById('bookPublisherInput').value = b.publisher || '';
+                document.getElementById('bookYearInput').value = b.publicationYear;
+                document.getElementById('bookStatusInput').value = b.status;
+                document.getElementById('bookDescInput').value = b.description || '';
+                document.getElementById('bookModalTitle').innerText = 'Edit Book';
+                document.getElementById('bookModal').style.display = 'flex';
+            } catch (err) {
+                showAlert('alertContainer', err.message);
+            }
+        }
+
+        document.getElementById('bookForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('bookId').value;
+            const payload = {
+                title: document.getElementById('bookTitleInput').value,
+                author: document.getElementById('bookAuthorInput').value,
+                isbn: document.getElementById('bookIsbnInput').value,
+                category: document.getElementById('bookCategoryInput').value,
+                language: document.getElementById('bookLanguageInput').value,
+                publisher: document.getElementById('bookPublisherInput').value,
+                publicationYear: parseInt(document.getElementById('bookYearInput').value),
+                status: document.getElementById('bookStatusInput').value,
+                description: document.getElementById('bookDescInput').value
+            };
+
+            try {
+                if (id) {
+                    await apiFetch(`/books/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+                } else {
+                    await apiFetch('/books', { method: 'POST', body: JSON.stringify(payload) });
+                }
+                closeModal('bookModal');
+                loadBooks();
+                loadStats();
+                showAlert('alertContainer', 'Book saved successfully!', 'success');
+            } catch (err) {
+                alert(err.message);
+            }
+        });
+
+        async function deleteBook(id) {
+            if (!confirm('Are you sure you want to delete this book?')) return;
+            try {
+                await apiFetch(`/books/${id}`, { method: 'DELETE' });
+                loadBooks();
+                loadStats();
+                showAlert('alertContainer', 'Book deleted successfully.', 'success');
+            } catch (err) {
+                showAlert('alertContainer', err.message);
+            }
+        }
+
+        // Upload Actions
+        function openUploadModal(bookId) {
+            document.getElementById('uploadBookId').value = bookId;
+            document.getElementById('uploadModal').style.display = 'flex';
+        }
+
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const bookId = document.getElementById('uploadBookId').value;
+            const file = document.getElementById('ebookFileInput').files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                await apiFetch(`/books/${bookId}/upload`, { method: 'POST', body: formData });
+                closeModal('uploadModal');
+                loadBooks();
+                showAlert('alertContainer', 'E-Book file uploaded successfully!', 'success');
+            } catch (err) {
+                alert(err.message);
+            }
+        });
+
+        // User Actions
+        function openUserModal() {
+            document.getElementById('userId').value = '';
+            document.getElementById('userForm').reset();
+            document.getElementById('userModalTitle').innerText = 'Create User';
+            document.getElementById('userModal').style.display = 'flex';
+        }
+
+        async function editUser(id) {
+            try {
+                const res = await apiFetch(`/users/${id}`);
+                const u = res.data;
+                document.getElementById('userId').value = u.id;
+                document.getElementById('userNameInput').value = u.name;
+                document.getElementById('userEmailInput').value = u.email;
+                document.getElementById('userRoleInput').value = u.role;
+                document.getElementById('userModalTitle').innerText = 'Edit User';
+                document.getElementById('userModal').style.display = 'flex';
+            } catch (err) {
+                showAlert('alertContainer', err.message);
+            }
+        }
+
+        document.getElementById('userForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('userId').value;
+            const payload = {
+                name: document.getElementById('userNameInput').value,
+                email: document.getElementById('userEmailInput').value,
+                password: document.getElementById('userPasswordInput').value,
+                role: document.getElementById('userRoleInput').value
+            };
+
+            try {
+                if (id) {
+                    await apiFetch(`/users/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+                } else {
+                    await apiFetch('/users', { method: 'POST', body: JSON.stringify(payload) });
+                }
+                closeModal('userModal');
+                loadUsers();
+                loadStats();
+                showAlert('alertContainer', 'User saved successfully!', 'success');
+            } catch (err) {
+                alert(err.message);
+            }
+        });
+
+        async function deleteUser(id) {
+            if (!confirm('Are you sure you want to delete this user?')) return;
+            try {
+                await apiFetch(`/users/${id}`, { method: 'DELETE' });
+                loadUsers();
+                loadStats();
+                showAlert('alertContainer', 'User deleted successfully.', 'success');
+            } catch (err) {
+                showAlert('alertContainer', err.message);
+            }
+        }
+
+        // License Actions
+        function openLicenseModal() {
+            document.getElementById('licenseId').value = '';
+            document.getElementById('licenseForm').reset();
+            document.getElementById('licenseModal').style.display = 'flex';
+        }
+
+        document.getElementById('licenseForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                bookId: parseInt(document.getElementById('licenseBookIdInput').value),
+                licenseStartDate: document.getElementById('licenseStartDateInput').value,
+                licenseEndDate: document.getElementById('licenseEndDateInput').value,
+                status: document.getElementById('licenseStatusInput').value
+            };
+
+            try {
+                await apiFetch('/licenses', { method: 'POST', body: JSON.stringify(payload) });
+                closeModal('licenseModal');
+                loadLicenses();
+                loadStats();
+                showAlert('alertContainer', 'License added successfully!', 'success');
+            } catch (err) {
+                alert(err.message);
+            }
+        });
+
+        async function deleteLicense(id) {
+            if (!confirm('Are you sure you want to delete this license?')) return;
+            try {
+                await apiFetch(`/licenses/${id}`, { method: 'DELETE' });
+                loadLicenses();
+                loadStats();
+            } catch (err) {
+                showAlert('alertContainer', err.message);
+            }
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+
+        loadStats();
+        loadBooks();
+    </script>
+</body>
+</html>

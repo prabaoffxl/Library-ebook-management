@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Details & Municipal Availability - Municipal Library</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .details-container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.05);
+            margin-bottom: 24px;
+        }
+        .details-header {
+            display: grid;
+            grid-template-columns: 220px 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        @media (max-width: 768px) {
+            .details-header {
+                grid-template-columns: 1fr;
+            }
+        }
+        .cover-box {
+            width: 100%;
+            height: 300px;
+            background: #f1f5f9;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 72px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .cover-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .info-title {
+            font-size: 28px;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 6px;
+        }
+        .info-author {
+            font-size: 16px;
+            color: #475569;
+            margin-bottom: 16px;
+        }
+        .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            background: #f8fafc;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .meta-item label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+        }
+        .meta-item span {
+            font-size: 15px;
+            font-weight: 600;
+            color: #1e293b;
+        }
+        .action-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 20px;
+        }
+        .section-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 24px;
+        }
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <h1>Municipal Library System</h1>
+            <nav style="display: flex; gap: 12px; align-items: center;">
+                <a href="/index.html" style="color: white; text-decoration: none; font-weight: 500; padding: 6px 10px; border-radius: 4px; background: rgba(255,255,255,0.1);">Dashboard</a>
+                <a href="/search.html" style="color: white; text-decoration: none; font-weight: 600; padding: 6px 10px; border-radius: 4px; background: rgba(255,255,255,0.25);">Search 🔍</a>
+                <a href="/libraries.html" style="color: white; text-decoration: none; font-weight: 500; padding: 6px 10px; border-radius: 4px; background: rgba(255,255,255,0.1);">Libraries</a>
+                <a href="/licenses.html" style="color: white; text-decoration: none; font-weight: 500; padding: 6px 10px; border-radius: 4px; background: rgba(255,255,255,0.1);">Licenses</a>
+                <a href="/reports.html" style="color: white; text-decoration: none; font-weight: 500; padding: 6px 10px; border-radius: 4px; background: rgba(255,255,255,0.1);">Reports 📊</a>
+            </nav>
+        </div>
+        <div class="nav-user">
+            <a href="/profile.html" style="color:white; text-decoration:none; margin-right:10px;">My Profile</a>
+            <span class="user-badge" id="userBadge">User</span>
+            <button class="btn-logout" onclick="logout()">Logout</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <div style="margin-bottom: 16px;">
+            <a href="/search.html" class="btn btn-secondary btn-sm" style="text-decoration:none;">← Back to Search</a>
+        </div>
+
+        <div id="alertContainer" class="alert" style="display: none;"></div>
+
+        <!-- Book Header & Metadata Card -->
+        <div class="details-container">
+            <div class="details-header">
+                <div class="cover-box" id="bookCoverBox">📖</div>
+                <div>
+                    <h1 class="info-title" id="bookTitle">Loading...</h1>
+                    <div class="info-author" id="bookAuthor">Loading author...</div>
+
+                    <div class="meta-grid">
+                        <div class="meta-item">
+                            <label>ISBN</label>
+                            <span id="bookIsbn">-</span>
+                        </div>
+                        <div class="meta-item">
+                            <label>Category</label>
+                            <span id="bookCategory">-</span>
+                        </div>
+                        <div class="meta-item">
+                            <label>Language</label>
+                            <span id="bookLanguage">-</span>
+                        </div>
+                        <div class="meta-item">
+                            <label>Publisher</label>
+                            <span id="bookPublisher">-</span>
+                        </div>
+                        <div class="meta-item">
+                            <label>Publication Year</label>
+                            <span id="bookYear">-</span>
+                        </div>
+                        <div class="meta-item">
+                            <label>Availability Status</label>
+                            <span id="bookStatusBadge"><span class="badge badge-active">AVAILABLE</span></span>
+                        </div>
+                    </div>
+
+                    <p style="color: #475569; font-size: 14px; line-height: 1.6;" id="bookDescription">
+                        Loading description...
+                    </p>
+
+                    <div class="action-bar">
+                        <button class="btn btn-primary" id="btnReadOnline" onclick="readOnline()">📖 Read Online</button>
+                        <button class="btn btn-secondary" id="btnPreviewReader" onclick="previewEbook()">👁️ Preview</button>
+                        <button class="btn btn-secondary" id="btnDownload" onclick="downloadEbook()" disabled>📥 Download E-Book</button>
+                        <button class="btn btn-secondary" onclick="openLicenseHistoryModal()">📜 License History</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Municipal Library Branches Availability -->
+        <div class="section-card">
+            <div class="section-title">
+                <span>🏛️</span> Available Municipal Library Branches
+            </div>
+            <p style="color: #64748b; font-size: 13px; margin-bottom: 16px;">
+                Municipal library locations holding cataloged physical or digital copies of this title:
+            </p>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Branch Code</th>
+                            <th>Library Name</th>
+                            <th>City / District</th>
+                            <th>Availability Status</th>
+                            <th>Date Added</th>
+                        </tr>
+                    </thead>
+                    <tbody id="librariesTableBody">
+                        <tr><td colspan="5" style="text-align:center;">Loading municipal branch locations...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Active Licenses Section -->
+        <div class="section-card">
+            <div class="section-title">
+                <span>🔑</span> E-Book License Status
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>License Key</th>
+                            <th>Provider</th>
+                            <th>Type</th>
+                            <th>Valid Until</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="licenseTableBody">
+                        <tr><td colspan="5" style="text-align:center;">Loading license status...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- License History Modal -->
+    <div id="licenseModal" class="modal">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h2>License History</h2>
+                <button class="close-btn" onclick="closeModal('licenseModal')">&times;</button>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>License Key</th>
+                            <th>Type</th>
+                            <th>Start Date</th>
+                            <th>End Date</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="licenseHistoryModalTable">
+                        <tr><td colspan="5" style="text-align:center;">Loading history...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/app.js"></script>
+    <script>
+        checkAuth(['ADMIN', 'LIBRARIAN', 'USER']);
+        document.getElementById('userBadge').innerText = `${getUserName()} (${getUserRole()})`;
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const bookId = urlParams.get('id');
+
+        if (!bookId) {
+            alert('No book ID specified.');
+            window.location.href = '/search.html';
+        }
+
+        async function loadBookDetails() {
+            try {
+                const res = await apiFetch(`/books/${bookId}`);
+                const book = res.data;
+
+                document.getElementById('bookTitle').innerText = book.title;
+                document.getElementById('bookAuthor').innerText = `by ${book.author}`;
+                document.getElementById('bookIsbn').innerText = book.isbn;
+                document.getElementById('bookCategory').innerText = book.category || 'General';
+                document.getElementById('bookLanguage').innerText = book.language || 'English';
+                document.getElementById('bookPublisher').innerText = book.publisher || 'N/A';
+                document.getElementById('bookYear').innerText = book.publicationYear || 'N/A';
+                document.getElementById('bookDescription').innerText = book.description || 'No description available for this book.';
+
+                if (book.coverImage) {
+                    const coverUrl = `/api/books/cover/${book.coverImage.split('/').pop()}`;
+                    document.getElementById('bookCoverBox').innerHTML = `<img src="${coverUrl}">`;
+                }
+
+                if (book.fileName) {
+                    const btnDl = document.getElementById('btnDownload');
+                    btnDl.disabled = false;
+                    btnDl.innerText = `📥 Download (${book.fileType || 'E-BOOK'})`;
+                }
+
+                loadBranchLocations();
+                loadLicenseStatus();
+            } catch (err) {
+                showAlert('alertContainer', err.message);
+            }
+        }
+
+        async function loadBranchLocations() {
+            try {
+                const res = await apiFetch(`/books/${bookId}/libraries`);
+                const tbody = document.getElementById('librariesTableBody');
+                tbody.innerHTML = '';
+                if (!res.data || res.data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#64748b;">No municipal branches currently associated with this book.</td></tr>';
+                    return;
+                }
+
+                res.data.forEach(loc => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><code>${loc.libraryCode}</code></td>
+                        <td><strong>${loc.libraryName}</strong></td>
+                        <td>${loc.city}, ${loc.district}</td>
+                        <td><span class="badge badge-active">${loc.availabilityStatus}</span></td>
+                        <td>${loc.addedAt ? new Date(loc.addedAt).toLocaleDateString() : 'N/A'}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (err) {
+                console.error('Error loading library locations', err);
+            }
+        }
+
+        async function loadLicenseStatus() {
+            try {
+                const res = await apiFetch(`/licenses/book/${bookId}/history`);
+                const tbody = document.getElementById('licenseTableBody');
+                tbody.innerHTML = '';
+                if (!res.data || res.data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#64748b;">No license records registered for this book.</td></tr>';
+                    return;
+                }
+
+                res.data.forEach(lic => {
+                    const tr = document.createElement('tr');
+                    const isAct = lic.status === 'ACTIVE';
+                    tr.innerHTML = `
+                        <td><code>${lic.licenseKey}</code></td>
+                        <td>${lic.provider || 'N/A'}</td>
+                        <td>${lic.licenseType || 'SINGLE_USER'}</td>
+                        <td>${lic.licenseEndDate}</td>
+                        <td><span class="badge ${isAct ? 'badge-active' : 'badge-expired'}">${lic.status}</span></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (err) {
+                console.error('Error loading licenses', err);
+            }
+        }
+
+        function readOnline() {
+            window.location.href = `/reader.html?bookId=${bookId}`;
+        }
+
+        function previewEbook() {
+            window.location.href = `/reader.html?bookId=${bookId}&preview=true`;
+        }
+
+        async function downloadEbook() {
+            try {
+                window.location.href = `/api/books/${bookId}/download`;
+            } catch (err) {
+                showAlert('alertContainer', err.message);
+            }
+        }
+
+        function previewAsset() {
+            window.location.href = `/assets.html?bookId=${bookId}`;
+        }
+
+        async function openLicenseHistoryModal() {
+            document.getElementById('licenseModal').style.display = 'flex';
+            try {
+                const res = await apiFetch(`/licenses/book/${bookId}/history`);
+                const tbody = document.getElementById('licenseHistoryModalTable');
+                tbody.innerHTML = '';
+                if (!res.data || res.data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No history records found.</td></tr>';
+                    return;
+                }
+                res.data.forEach(lic => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><code>${lic.licenseKey}</code></td>
+                        <td>${lic.licenseType || 'SINGLE_USER'}</td>
+                        <td>${lic.licenseStartDate}</td>
+                        <td>${lic.licenseEndDate}</td>
+                        <td><span class="badge ${lic.status === 'ACTIVE' ? 'badge-active' : 'badge-expired'}">${lic.status}</span></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+
+        loadBookDetails();
+    </script>
+</body>
+</html>

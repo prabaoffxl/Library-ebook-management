@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Librarian Dashboard - Municipal Library</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <header style="background-color: var(--secondary-color);">
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <h1>Librarian Dashboard</h1>
+            <nav style="display: flex; gap: 15px; align-items: center;">
+                <a href="/librarian-dashboard.html" style="color: white; text-decoration: none; font-weight: 600; padding: 6px 12px; border-radius: 4px; background: rgba(255,255,255,0.25);">Books</a>
+                <a href="/libraries.html" style="color: white; text-decoration: none; font-weight: 500; padding: 6px 12px; border-radius: 4px; background: rgba(255,255,255,0.1);">Libraries</a>
+                <a href="/licenses.html" style="color: white; text-decoration: none; font-weight: 500; padding: 6px 12px; border-radius: 4px; background: rgba(255,255,255,0.1);">Licenses</a>
+                <a href="/assets.html" style="color: white; text-decoration: none; font-weight: 500; padding: 6px 12px; border-radius: 4px; background: rgba(255,255,255,0.1);">Digital Assets</a>
+                <a href="/reports.html" style="color: white; text-decoration: none; font-weight: 500; padding: 6px 12px; border-radius: 4px; background: rgba(255,255,255,0.1);">Reports 📊</a>
+                <a href="/notifications.html" style="color: white; text-decoration: none; font-weight: 500; padding: 6px 12px; border-radius: 4px; background: rgba(255,255,255,0.1);">Notifications 🔔 <span class="notif-badge-counter" style="display:none; background:#dc3545; color:white; border-radius:10px; padding:2px 6px; font-size:12px;">0</span></a>
+            </nav>
+        </div>
+        <div class="nav-user">
+            <a href="/profile.html" style="color:white; text-decoration:none; margin-right:10px;">My Profile</a>
+            <span class="user-badge" id="userBadge">Librarian</span>
+            <button class="btn-logout" onclick="logout()">Logout</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Total Books</h3>
+                <p id="statTotalBooks">0</p>
+            </div>
+            <div class="stat-card success">
+                <h3>Available Books</h3>
+                <p id="statAvailableBooks">0</p>
+            </div>
+            <div class="stat-card accent">
+                <h3>Active Licenses</h3>
+                <p id="statActiveLicenses">0</p>
+            </div>
+            <div class="stat-card warning">
+                <h3>Expiring Soon</h3>
+                <p id="statExpiringSoonLicenses">0</p>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem;">
+            <button class="btn btn-primary" id="tabBooks" onclick="switchTab('books')">Book Catalog & Digital Assets</button>
+            <button class="btn btn-secondary" onclick="window.location.href='/licenses.html'">License Manager 🔗</button>
+        </div>
+
+        <div id="alertContainer" class="alert" style="display: none;"></div>
+
+        <!-- Book Catalog -->
+        <div id="sectionBooks">
+            <div class="controls-bar">
+                <div class="search-filter-group">
+                    <input type="text" id="bookSearch" placeholder="Search title, author, ISBN..." style="width: 250px;">
+                </div>
+                <button class="btn btn-primary" onclick="openBookModal()">+ Add New Book</button>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Cover</th>
+                            <th>Title</th>
+                            <th>Author</th>
+                            <th>ISBN</th>
+                            <th>Category</th>
+                            <th>Status</th>
+                            <th>Digital File</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="booksTableBody">
+                        <tr><td colspan="8" style="text-align:center;">Loading books...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- License Operations -->
+        <div id="sectionLicenses" style="display: none;">
+            <div class="controls-bar">
+                <h2>Active E-Book Licenses</h2>
+                <button class="btn btn-primary" onclick="openLicenseModal()">+ Register New License</button>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>License ID</th>
+                            <th>Book Title</th>
+                            <th>Start Date</th>
+                            <th>End Date</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="licensesTableBody">
+                        <tr><td colspan="5" style="text-align:center;">Loading licenses...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="bookModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="bookModalTitle">Add Book</h2>
+                <button class="close-btn" onclick="closeModal('bookModal')">&times;</button>
+            </div>
+            <form id="bookForm">
+                <input type="hidden" id="bookId">
+                <div class="form-group">
+                    <label>Book Title *</label>
+                    <input type="text" id="bookTitleInput" required>
+                </div>
+                <div class="form-group">
+                    <label>Author *</label>
+                    <input type="text" id="bookAuthorInput" required>
+                </div>
+                <div class="form-group">
+                    <label>ISBN *</label>
+                    <input type="text" id="bookIsbnInput" required>
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <div class="form-group" style="flex:1;">
+                        <label>Category *</label>
+                        <input type="text" id="bookCategoryInput" required>
+                    </div>
+                    <div class="form-group" style="flex:1;">
+                        <label>Language *</label>
+                        <input type="text" id="bookLanguageInput" value="English" required>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <div class="form-group" style="flex:1;">
+                        <label>Publisher</label>
+                        <input type="text" id="bookPublisherInput">
+                    </div>
+                    <div class="form-group" style="flex:1;">
+                        <label>Publication Year *</label>
+                        <input type="number" id="bookYearInput" value="2024" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Status *</label>
+                    <select id="bookStatusInput">
+                        <option value="AVAILABLE">AVAILABLE</option>
+                        <option value="UNAVAILABLE">UNAVAILABLE</option>
+                        <option value="ARCHIVED">ARCHIVED</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="bookDescInput" rows="3"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Save Book</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="uploadModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Upload E-Book File</h2>
+                <button class="close-btn" onclick="closeModal('uploadModal')">&times;</button>
+            </div>
+            <form id="uploadForm">
+                <input type="hidden" id="uploadBookId">
+                <div class="form-group">
+                    <label>Select PDF or EPUB File (Max 50MB) *</label>
+                    <input type="file" id="ebookFileInput" accept=".pdf,.epub" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Upload E-Book</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="licenseModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Register License</h2>
+                <button class="close-btn" onclick="closeModal('licenseModal')">&times;</button>
+            </div>
+            <form id="licenseForm">
+                <div class="form-group">
+                    <label>Book ID *</label>
+                    <input type="number" id="licenseBookIdInput" required>
+                </div>
+                <div class="form-group">
+                    <label>Start Date *</label>
+                    <input type="date" id="licenseStartDateInput" required>
+                </div>
+                <div class="form-group">
+                    <label>End Date *</label>
+                    <input type="date" id="licenseEndDateInput" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Save License</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="/js/app.js"></script>
+    <script>
+        checkAuth(['LIBRARIAN', 'ADMIN']);
+        document.getElementById('userBadge').innerText = `${getUserName()} (${getUserRole()})`;
+
+        async function loadStats() {
+            try {
+                const res = await apiFetch('/dashboard/stats');
+                document.getElementById('statTotalBooks').innerText = res.data.totalBooks;
+                document.getElementById('statAvailableBooks').innerText = res.data.availableBooks;
+                document.getElementById('statActiveLicenses').innerText = res.data.activeLicenses;
+                document.getElementById('statExpiringSoonLicenses').innerText = res.data.expiringSoonLicenses;
+            } catch (err) {
+                showAlert('alertContainer', err.message);
+            }
+        }
+
+        async function loadBooks() {
+            const search = document.getElementById('bookSearch').value;
+            let endpoint = '/books?page=0&size=50';
+            if (search) endpoint = `/books/search?query=${encodeURIComponent(search)}&page=0&size=50`;
+
+            try {
+                const res = await apiFetch(endpoint);
+                const tbody = document.getElementById('booksTableBody');
+                tbody.innerHTML = '';
+                res.data.content.forEach(book => {
+                    const tr = document.createElement('tr');
+                    const coverUrl = book.coverImage ? `/api/books/cover/${book.coverImage.split('/').pop()}` : '';
+                    const coverHtml = coverUrl ? `<img src="${coverUrl}" style="width:35px;height:45px;object-fit:cover;">` : '📖';
+                    tr.innerHTML = `
+                        <td>${coverHtml}</td>
+                        <td><strong>${book.title}</strong></td>
+                        <td>${book.author}</td>
+                        <td><code>${book.isbn}</code></td>
+                        <td>${book.category}</td>
+                        <td><span class="badge badge-${book.status.toLowerCase()}">${book.status}</span></td>
+                        <td>${book.fileName ? `📄 ${book.fileName}` : '<span style="color:#94a3b8;">Not Uploaded</span>'}</td>
+                        <td>
+                            <button class="btn btn-secondary btn-sm" onclick="openUploadModal(${book.id})">Upload File</button>
+                            <button class="btn btn-primary btn-sm" onclick="editBook(${book.id})">Edit</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (err) {
+                showAlert('alertContainer', err.message);
+            }
+        }
+
+        async function loadLicenses() {
+            try {
+                const res = await apiFetch('/licenses');
+                const tbody = document.getElementById('licensesTableBody');
+                tbody.innerHTML = '';
+                res.data.forEach(lic => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>#${lic.id}</td>
+                        <td><strong>${lic.bookTitle}</strong></td>
+                        <td>${lic.licenseStartDate}</td>
+                        <td>${lic.licenseEndDate}</td>
+                        <td><span class="badge badge-${lic.status.toLowerCase()}">${lic.status}</span></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (err) {
+                showAlert('alertContainer', err.message);
+            }
+        }
+
+        function switchTab(tab) {
+            document.getElementById('sectionBooks').style.display = tab === 'books' ? 'block' : 'none';
+            document.getElementById('sectionLicenses').style.display = tab === 'licenses' ? 'block' : 'none';
+            document.getElementById('tabBooks').className = tab === 'books' ? 'btn btn-primary' : 'btn btn-secondary';
+            document.getElementById('tabLicenses').className = tab === 'licenses' ? 'btn btn-primary' : 'btn btn-secondary';
+            if (tab === 'books') loadBooks();
+            if (tab === 'licenses') loadLicenses();
+        }
+
+        document.getElementById('bookSearch').addEventListener('input', () => loadBooks());
+
+        function openBookModal() {
+            document.getElementById('bookId').value = '';
+            document.getElementById('bookForm').reset();
+            document.getElementById('bookModalTitle').innerText = 'Add Book';
+            document.getElementById('bookModal').style.display = 'flex';
+        }
+
+        async function editBook(id) {
+            try {
+                const res = await apiFetch(`/books/${id}`);
+                const b = res.data;
+                document.getElementById('bookId').value = b.id;
+                document.getElementById('bookTitleInput').value = b.title;
+                document.getElementById('bookAuthorInput').value = b.author;
+                document.getElementById('bookIsbnInput').value = b.isbn;
+                document.getElementById('bookCategoryInput').value = b.category;
+                document.getElementById('bookLanguageInput').value = b.language;
+                document.getElementById('bookPublisherInput').value = b.publisher || '';
+                document.getElementById('bookYearInput').value = b.publicationYear;
+                document.getElementById('bookStatusInput').value = b.status;
+                document.getElementById('bookDescInput').value = b.description || '';
+                document.getElementById('bookModalTitle').innerText = 'Edit Book';
+                document.getElementById('bookModal').style.display = 'flex';
+            } catch (err) {
+                showAlert('alertContainer', err.message);
+            }
+        }
+
+        document.getElementById('bookForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('bookId').value;
+            const payload = {
+                title: document.getElementById('bookTitleInput').value,
+                author: document.getElementById('bookAuthorInput').value,
+                isbn: document.getElementById('bookIsbnInput').value,
+                category: document.getElementById('bookCategoryInput').value,
+                language: document.getElementById('bookLanguageInput').value,
+                publisher: document.getElementById('bookPublisherInput').value,
+                publicationYear: parseInt(document.getElementById('bookYearInput').value),
+                status: document.getElementById('bookStatusInput').value,
+                description: document.getElementById('bookDescInput').value
+            };
+
+            try {
+                if (id) await apiFetch(`/books/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+                else await apiFetch('/books', { method: 'POST', body: JSON.stringify(payload) });
+                closeModal('bookModal');
+                loadBooks();
+                loadStats();
+            } catch (err) { alert(err.message); }
+        });
+
+        function openUploadModal(bookId) {
+            document.getElementById('uploadBookId').value = bookId;
+            document.getElementById('uploadModal').style.display = 'flex';
+        }
+
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const bookId = document.getElementById('uploadBookId').value;
+            const file = document.getElementById('ebookFileInput').files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+            try {
+                await apiFetch(`/books/${bookId}/upload`, { method: 'POST', body: formData });
+                closeModal('uploadModal');
+                loadBooks();
+            } catch (err) { alert(err.message); }
+        });
+
+        function openLicenseModal() {
+            document.getElementById('licenseForm').reset();
+            document.getElementById('licenseModal').style.display = 'flex';
+        }
+
+        document.getElementById('licenseForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                bookId: parseInt(document.getElementById('licenseBookIdInput').value),
+                licenseStartDate: document.getElementById('licenseStartDateInput').value,
+                licenseEndDate: document.getElementById('licenseEndDateInput').value,
+                status: 'ACTIVE'
+            };
+            try {
+                await apiFetch('/licenses', { method: 'POST', body: JSON.stringify(payload) });
+                closeModal('licenseModal');
+                loadLicenses();
+                loadStats();
+            } catch (err) { alert(err.message); }
+        });
+
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        loadStats();
+        loadBooks();
+    </script>
+</body>
+</html>

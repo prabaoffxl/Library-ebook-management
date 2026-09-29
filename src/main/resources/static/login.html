@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Municipal Library E-Book Management</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="auth-wrapper">
+        <div class="auth-card">
+            <div class="auth-header">
+                <h1>Municipal E-Book Library</h1>
+                <p>Digital Asset & Licensing Management System</p>
+            </div>
+
+            <div id="alertBox" class="alert" style="display: none;"></div>
+
+            <!-- Login Form -->
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="loginEmail">Email Address</label>
+                    <input type="email" id="loginEmail" placeholder="admin@municipallibrary.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" placeholder="••••••••" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;">Sign In</button>
+            </form>
+
+            <!-- Register Form (Hidden by Default) -->
+            <form id="registerForm" style="display: none;">
+                <div class="form-group">
+                    <label for="regName">Full Name</label>
+                    <input type="text" id="regName" placeholder="John Doe" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="regEmail">Email Address</label>
+                    <input type="email" id="regEmail" placeholder="user@example.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="regPassword">Password (Min 6 chars)</label>
+                    <input type="password" id="regPassword" placeholder="••••••••" required minlength="6">
+                </div>
+
+                <button type="submit" class="btn btn-secondary" style="width: 100%; margin-top: 0.5rem;">Register Account</button>
+            </form>
+
+            <div style="text-align: center; margin-top: 1.25rem;">
+                <a href="#" id="toggleAuthMode" style="color: var(--primary-color); font-size: 0.85rem; text-decoration: none;">Don't have an account? Register here</a>
+            </div>
+
+            <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color); font-size: 0.8rem; color: var(--text-secondary);">
+                <strong>Demo Test Credentials:</strong><br>
+                • <strong>Admin:</strong> admin@municipallibrary.com / Admin@123<br>
+                • <strong>Librarian:</strong> librarian@municipallibrary.com / Librarian@123<br>
+                • <strong>User:</strong> patron@municipallibrary.com / Patron@123
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/app.js"></script>
+    <script>
+        let isRegister = false;
+
+        document.getElementById('toggleAuthMode').addEventListener('click', (e) => {
+            e.preventDefault();
+            isRegister = !isRegister;
+            document.getElementById('loginForm').style.display = isRegister ? 'none' : 'block';
+            document.getElementById('registerForm').style.display = isRegister ? 'block' : 'none';
+            document.getElementById('toggleAuthMode').innerText = isRegister ? 'Already registered? Sign in here' : "Don't have an account? Register here";
+        });
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+
+            try {
+                const res = await apiFetch('/auth/login', {
+                    method: 'POST',
+                    body: JSON.stringify({ email, password })
+                });
+
+                localStorage.setItem('token', res.data.token);
+                localStorage.setItem('role', res.data.role);
+                localStorage.setItem('name', res.data.name);
+
+                showAlert('alertBox', 'Login successful! Redirecting...', 'success');
+                setTimeout(() => {
+                    redirectUserByRole(res.data.role);
+                }, 800);
+            } catch (err) {
+                showAlert('alertBox', err.message || 'Invalid credentials');
+            }
+        });
+
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('regName').value;
+            const email = document.getElementById('regEmail').value;
+            const password = document.getElementById('regPassword').value;
+
+            try {
+                await apiFetch('/users/register', {
+                    method: 'POST',
+                    body: JSON.stringify({ name, email, password })
+                });
+
+                showAlert('alertBox', 'Registration successful! You can now log in.', 'success');
+                setTimeout(() => {
+                    document.getElementById('toggleAuthMode').click();
+                }, 1200);
+            } catch (err) {
+                showAlert('alertBox', err.message || 'Registration failed');
+            }
+        });
+    </script>
+</body>
+</html>

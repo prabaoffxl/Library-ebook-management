@@ -1,0 +1,17 @@
+package com.library.entity;
+
+public enum NotificationType {
+    SYSTEM,
+    LICENSE_EXPIRING,
+    LICENSE_EXPIRED,
+    LICENSE_RENEWED,
+    LICENSE_SUSPENDED,
+    LICENSE_CANCELLED,
+    BOOK_AVAILABLE,
+    BOOK_UNAVAILABLE,
+    ACCOUNT_STATUS,
+    ASSET_UPDATED,
+    LICENSE,
+    BOOK,
+    ACCOUNT
+}
